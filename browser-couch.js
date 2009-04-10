@@ -39,7 +39,7 @@ var BrowserCouch = {
     var self = this;
 
     function createDb() {
-      cb(new self._DB(name, storage, JSON));
+      cb(new self._DB(name, storage, new self._Dictionary(JSON)));
     }
 
     if (!storage) {
@@ -84,53 +84,107 @@ var BrowserCouch = {
     doc.body.appendChild(script);
   },
 
-  _DB: function BC__DB(name, storage, JSON) {
-    var dbName = 'BrowserCouch_DB_' + name;
+  _Dictionary: function BC__Dictionary(JSON) {
+    var keysAndValues = [];
+    var keyIndex = {};
 
-    var documents = [];
-    var docIdIndex = {};
-
-    if (dbName in storage && storage[dbName].value) {
-      var db = JSON.parse(storage[dbName].value);
-      documents = db.documents;
-      docIdIndex = db.docIdIndex;
+    function sort() {
+      keyIndex = {};
+      keysAndValues.sort(function compare(a, b) {
+                           if (a[0] < b[0])
+                             return -1;
+                           if (a[0] > b[0])
+                             return 1;
+                           return 0;
+                         });
+      for (var i = 0; i < keysAndValues.length; i++) {
+        var tuple = keysAndValues[i];
+        keyIndex[tuple[0]] = i;
+      }
     }
 
+    this.has = function Dictionary_has(key) {
+      return (key in keyIndex);
+    };
+
+    this.getNthValue = function Dictionary_getNthValue(index) {
+      return keysAndValues[index][1];
+    };
+
+    this.getLength = function Dictionary_getLength() {
+      return keysAndValues.length;
+    };
+
+    this.get = function Dictionary_get(key) {
+      var index = keyIndex[key];
+      if (index)
+        return keysAndValues[index][1];
+      else
+        throw new Error("key not in dictionary: " + key);
+    };
+
+    this.set = function Dictionary_set(key, value) {
+      if (key in keyIndex)
+        keysAndValues[keyIndex[key]][1] = value;
+      else {
+        keysAndValues.push([key, value]);
+        sort();
+      }
+    };
+
+    this.delete = function Dictionary_delete(key) {
+      delete keysAndValues[keyIndex[key]];
+      sort();
+    };
+
+    this.clear = function Dictionary_clear() {
+      keysAndValues = [];
+      keyIndex = {};
+    };
+
+    this.toJSON = function Dictionary_toJSON() {
+      return JSON.stringify({keysAndValues: keysAndValues,
+                             keyIndex: keyIndex});
+    };
+
+    this.fromJSON = function Dictionary_fromJSON(string) {
+      var obj = JSON.parse(string);
+      keysAndValues = obj.keysAndValues;
+      keyIndex = obj.keyIndex;
+    };
+  },
+
+  _DB: function BC__DB(name, storage, dict) {
+    var dbName = 'BrowserCouch_DB_' + name;
+
+    if (dbName in storage && storage[dbName].value)
+      dict.fromJSON(storage[dbName].value);
+
     function commitToStorage() {
-      storage[dbName].value = JSON.stringify(
-        {documents: documents,
-         docIdIndex: docIdIndex}
-      );
+      storage[dbName].value = dict.toJSON();
     }
 
     this.wipe = function DB_wipe(cb) {
-      documents = [];
-      docIdIndex = {};
+      dict.clear();
       commitToStorage();
       if (cb)
         cb();
     };
 
     this.get = function DB_get(id, cb) {
-      if (id in docIdIndex)
-        cb(documents[docIdIndex[id]]);
+      if (dict.has(id))
+        cb(dict.get(id));
       else
         cb(null);
     };
 
     this.put = function DB_put(document, cb) {
-      function putSingleDocument(doc) {
-        if (doc.id in docIdIndex)
-          documents[docIdIndex[doc.id]] = doc;
-        else
-          docIdIndex[doc.id] = documents.push(doc) - 1;
-      }
-
       if (document.constructor.name == "Array") {
         for (var i = 0; i < document.length; i++)
-          putSingleDocument(document[i]);
+          dict.set(document[i].id, document[i]);
       } else
-        putSingleDocument(document);
+        dict.set(document.id, document);
+
       commitToStorage();
       cb();
     };
@@ -145,15 +199,16 @@ var BrowserCouch = {
 
       BrowserCouch._mapReduce(options.map,
                               options.reduce,
-                              documents,
+                              dict,
                               options.progress,
                               options.finished,
                               options.chunkSize);
     };
   },
 
-  _mapReduce: function BC__mapReduce(map, reduce, documents, progress,
+  _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
                                      finished, chunkSize) {
+    var len = dict.getLength();
     var mapResult = {};
 
     function emit(key, value) {
@@ -165,7 +220,7 @@ var BrowserCouch = {
       mapResult[key].push(value);
     }
 
-    // Maximum number of documents to process before giving the UI a chance
+    // Maximum number of items to process before giving the UI a chance
     // to breathe.
     var DEFAULT_CHUNK_SIZE = 1000;
 
@@ -182,16 +237,16 @@ var BrowserCouch = {
       var iAtStart = i;
 
       do {
-        map(documents[i], emit);
+        map(dict.getNthValue(i), emit);
         i++;
       } while (i - iAtStart < chunkSize &&
-               i < documents.length)
+               i < len)
 
-      if (i == documents.length)
+      if (i == len)
         doReduce();
       else {
         if (progress)
-          progress(i / documents.length, continueMap);
+          progress(i / len, continueMap);
         else
           window.setTimeout(continueMap, DEFAULT_UI_BREATHE_TIME);
       }
