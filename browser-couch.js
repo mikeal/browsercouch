@@ -136,6 +136,8 @@ var BrowserCouch = {
     };
 
     this.view = function DB_view(options) {
+      // TODO: Add support for worker threads.
+
       if (!options.map)
         throw new Error('map function not provided');
       if (!options.finished)
