@@ -91,7 +91,6 @@ var BrowserCouch = {
     var docIdIndex = {};
 
     if (dbName in storage && storage[dbName].value) {
-      console.log(storage[dbName].value);
       var db = JSON.parse(storage[dbName].value);
       documents = db.documents;
       docIdIndex = db.docIdIndex;
@@ -180,34 +179,3 @@ var BrowserCouch = {
     };
   }
 };
-
-var gDb;
-
-BrowserCouch.get(
-  "blarg",
-  function(db) {
-    gDb = db;
-    console.log(db);
-    db.put(
-      [{id: "monkey",
-        content: "hello there dude"},
-       {id: "chunky",
-        content: "hello there dogen"}],
-      function() {
-        db.view(
-          {map: function(doc, emit) {
-             var words = doc.content.split(" ");
-             for (var i = 0; i < words.length; i++)
-               emit(words[i], 1);
-           },
-           reduce: function(keys, values) {
-             var totals = {};
-             for (var i = 0; i < keys.length; i++)
-               totals[keys[i]] = values[i].length;
-             return totals;
-           },
-           callback: function(result) {
-             console.log(result);
-           }});
-      });
-  });
