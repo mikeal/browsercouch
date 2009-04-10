@@ -1,12 +1,24 @@
 var BrowserCouch = {
   get: function BC_get(name, cb) {
-    cb(new this._DB(name, new Object()));
+    cb(new this._DB(name, []));
   },
 
   _DB: function BC__DB(name, documents) {
+    var docIdIndex = {};
+
+    function putSingleDocument(doc) {
+      if (doc.id in docIdIndex)
+        documents[docIdIndex[doc.id]] = doc;
+      else
+        docIdIndex[doc.id] = documents.push(doc);
+    }
+
+    for (var i = 0; i < documents.length; i++)
+      putSingleDocument(documents[i]);
+
     this.get = function DB_get(id, cb) {
-      if (documents[id])
-        cb(documents[id]);
+      if (id in docIdIndex)
+        cb(documents[docIdIndex[id]]);
       else
         cb(null);
     };
@@ -14,9 +26,9 @@ var BrowserCouch = {
     this.put = function DB_put(document, cb) {
       if (document.constructor.name == "Array") {
         for (var i = 0; i < document.length; i++)
-          documents[document[i].id] = document[i];
+          putSingleDocument(document[i]);
       } else
-        documents[document.id] = document;
+        putSingleDocument(document);
       cb();
     };
 
@@ -38,10 +50,8 @@ var BrowserCouch = {
         mapResult[key].push(value);
       }
 
-      for (id in documents) {
-        var document = documents[id];
-        map(document, emit);
-      }
+      for (var i = 0; i < documents.length; i++)
+        map(documents[i], emit);
 
       if (reduce) {
         var keys = [];
