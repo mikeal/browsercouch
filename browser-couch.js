@@ -138,15 +138,20 @@ var BrowserCouch = {
     this.view = function DB_view(options) {
       if (!options.map)
         throw new Error('map function not provided');
+      if (!options.finished)
+        throw new Error('finished callback not provided');
 
       BrowserCouch._mapReduce(options.map,
                               options.reduce,
                               documents,
-                              options.callback);
+                              options.progress,
+                              options.finished,
+                              options.chunkSize);
     };
   },
 
-  _mapReduce: function BC__mapReduce(map, reduce, documents, cb) {
+  _mapReduce: function BC__mapReduce(map, reduce, documents, progress,
+                                     finished, chunkSize) {
     var mapResult = {};
 
     function emit(key, value) {
@@ -158,28 +163,61 @@ var BrowserCouch = {
       mapResult[key].push(value);
     }
 
-    for (var i = 0; i < documents.length; i++)
-      map(documents[i], emit);
+    // Maximum number of documents to process before giving the UI a chance
+    // to breathe.
+    var DEFAULT_CHUNK_SIZE = 1000;
 
-    if (reduce) {
-      var keys = [];
-      var values = [];
+    // If no progress callback is given, we'll automatically give the
+    // UI a chance to breathe for this many milliseconds before continuing
+    // processing.
+    var DEFAULT_UI_BREATHE_TIME = 50;
 
-      for (key in mapResult) {
-        keys.push(key);
-        values.push(mapResult[key]);
+    if (!chunkSize)
+      chunkSize = DEFAULT_CHUNK_SIZE;
+    var i = 0;
+
+    function continueMap() {
+      var iAtStart = i;
+
+      do {
+        map(documents[i], emit);
+        i++;
+      } while (i - iAtStart < chunkSize &&
+               i < documents.length)
+
+      if (i == documents.length)
+        doReduce();
+      else {
+        if (progress)
+          progress(i / documents.length, continueMap);
+        else
+          window.setTimeout(continueMap, DEFAULT_UI_BREATHE_TIME);
       }
+    }
 
-      cb(reduce(keys, values));
-    } else {
-      var result = [];
+    continueMap();
 
-      for (key in mapResult) {
-        var values = mapResult[key];
-        for (i = 0; i < values.length; i++)
-          result.push([key, values[i]]);
+    function doReduce() {
+      if (reduce) {
+        var keys = [];
+        var values = [];
+
+        for (key in mapResult) {
+          keys.push(key);
+          values.push(mapResult[key]);
+        }
+
+        finished(reduce(keys, values));
+      } else {
+        var result = [];
+
+        for (key in mapResult) {
+          var values = mapResult[key];
+          for (var i = 0; i < values.length; i++)
+            result.push([key, values[i]]);
+        }
+        finished(result);
       }
-      cb(result);
     }
   }
 };

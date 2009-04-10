@@ -47,12 +47,14 @@ var Tests = {
     BrowserCouch.get(
       "blarg",
       function(db) {
+        var progressCalled = false;
         db.put(
           [{id: "monkey",
             content: "hello there dude"},
            {id: "chunky",
             content: "hello there dogen"}],
           function() {
+            var timesProgressCalled = 0;
             db.view(
               {map: function(doc, emit) {
                  var words = doc.content.split(" ");
@@ -65,7 +67,14 @@ var Tests = {
                    totals[keys[i]] = values[i].length;
                  return totals;
                },
-               callback: function(result) {
+               chunkSize: 1,
+               progress: function(percentDone, resume) {
+                 self.assertEqual(percentDone, 0.5);
+                 progressCalled = true;
+                 resume();
+               },
+               finished: function(result) {
+                 self.assertEqual(progressCalled, true);
                  self.assertEqual(result.hello, 2);
                  self.assertEqual(result.there, 2);
                  self.assertEqual(result.dude, 1);
