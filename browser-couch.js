@@ -129,7 +129,7 @@ var BrowserCouch = {
     };
 
     this.delete = function Dictionary_delete(key) {
-      delete keysAndValues[keyIndex[key]];
+      keysAndValues.splice(keyIndex[key], 1);
       sort();
     };
 

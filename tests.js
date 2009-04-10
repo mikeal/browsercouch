@@ -55,6 +55,10 @@ var Tests = {
     self.assertEqual(dict.has('foo'), true);
     self.assertEqual(dict.has('bar'), true);
     self.assertEqual(dict.has('spatula'), false);
+    dict.delete('bar');
+    self.assertEqual(dict.getLength(), 1);
+    self.assertEqual(dict.getNthValue(0).a, 'hello');
+    self.assertEqual(dict.has('foo'), true);
   },
   testDbView_async: function(self) {
     BrowserCouch.get(
