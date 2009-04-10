@@ -136,46 +136,50 @@ var BrowserCouch = {
     };
 
     this.view = function DB_view(options) {
-      var map = options.map;
-      var reduce = options.reduce;
-
-      if (!map)
+      if (!options.map)
         throw new Error('map function not provided');
 
-      var mapResult = {};
-
-      function emit(key, value) {
-        // TODO: This assumes that the key will always be
-        // an indexable value. We may have to hash the value,
-        // though, if it's e.g. an Object.
-        if (!mapResult[key])
-          mapResult[key] = [];
-        mapResult[key].push(value);
-      }
-
-      for (var i = 0; i < documents.length; i++)
-        map(documents[i], emit);
-
-      if (reduce) {
-        var keys = [];
-        var values = [];
-
-        for (key in mapResult) {
-          keys.push(key);
-          values.push(mapResult[key]);
-        }
-
-        options.callback(reduce(keys, values));
-      } else {
-        var result = [];
-
-        for (key in mapResult) {
-          var values = mapResult[key];
-          for (i = 0; i < values.length; i++)
-            result.push([key, values[i]]);
-        }
-        options.callback(result);
-      }
+      BrowserCouch._mapReduce(options.map,
+                              options.reduce,
+                              documents,
+                              options.callback);
     };
+  },
+
+  _mapReduce: function BC__mapReduce(map, reduce, documents, cb) {
+    var mapResult = {};
+
+    function emit(key, value) {
+      // TODO: This assumes that the key will always be
+      // an indexable value. We may have to hash the value,
+      // though, if it's e.g. an Object.
+      if (!mapResult[key])
+        mapResult[key] = [];
+      mapResult[key].push(value);
+    }
+
+    for (var i = 0; i < documents.length; i++)
+      map(documents[i], emit);
+
+    if (reduce) {
+      var keys = [];
+      var values = [];
+
+      for (key in mapResult) {
+        keys.push(key);
+        values.push(mapResult[key]);
+      }
+
+      cb(reduce(keys, values));
+    } else {
+      var result = [];
+
+      for (key in mapResult) {
+        var values = mapResult[key];
+        for (i = 0; i < values.length; i++)
+          result.push([key, values[i]]);
+      }
+      cb(result);
+    }
   }
 };
