@@ -43,7 +43,20 @@ var Tests = {
 
     runNextTest();
   },
-  testBasic_async: function(self) {
+  testDictionary: function(self) {
+    var dict = new BrowserCouch._Dictionary();
+    dict.set('foo', {a: 'hello'});
+    dict.set('bar', {b: 'goodbye'});
+    self.assertEqual(dict.get('foo').a, 'hello');
+    self.assertEqual(dict.get('bar').b, 'goodbye');
+    self.assertEqual(dict.getNthValue(0).b, 'goodbye');
+    self.assertEqual(dict.getNthValue(1).a, 'hello');
+    self.assertEqual(dict.getLength(), 2);
+    self.assertEqual(dict.has('foo'), true);
+    self.assertEqual(dict.has('bar'), true);
+    self.assertEqual(dict.has('spatula'), false);
+  },
+  testDbView_async: function(self) {
     BrowserCouch.get(
       "blarg",
       function(db) {

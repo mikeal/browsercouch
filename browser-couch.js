@@ -116,11 +116,7 @@ var BrowserCouch = {
     };
 
     this.get = function Dictionary_get(key) {
-      var index = keyIndex[key];
-      if (index)
-        return keysAndValues[index][1];
-      else
-        throw new Error("key not in dictionary: " + key);
+      return keysAndValues[keyIndex[key]][1];
     };
 
     this.set = function Dictionary_set(key, value) {
