@@ -171,7 +171,7 @@ var BrowserCouch = {
 
         for (key in mapResult) {
           var values = mapResult[key];
-          for (var i = 0; i < values.length; i++)
+          for (i = 0; i < values.length; i++)
             result.push([key, values[i]]);
         }
         options.callback(result);
