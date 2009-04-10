@@ -1,0 +1,18 @@
+.test {
+}
+
+.in-progress {
+    background-color: yellow;
+}
+
+.successful {
+    background-color: lawnGreen;
+}
+
+.failed {
+    background-color: red;
+}
+
+.pending {
+    background-color: lightGrey;
+}

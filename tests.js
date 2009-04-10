@@ -1,13 +1,7 @@
 var Tests = {
-  run: function(container, console, setTimeout) {
+  run: function(listener, container, setTimeout) {
     if (!container)
       container = this;
-    if (!console) {
-      if (!window.console)
-        throw new Error("window.console unavailable");
-      else
-        console = window.console;
-    }
     if (!setTimeout)
       setTimeout = window.setTimeout;
 
@@ -20,6 +14,7 @@ var Tests = {
           func: container[name],
           isAsync: name.indexOf("_async") != -1,
           console: console,
+          id: tests.length,
           assertEqual: function assertEqual(a, b) {
             if (a != b)
               throw new Error(a + " != " + b);
@@ -28,22 +23,22 @@ var Tests = {
         tests.push(test);
       }
 
+    listener.onReady(tests);
     var nextTest = 0;
 
     function runNextTest() {
       if (nextTest < tests.length) {
         var test = tests[nextTest];
-        console.log("Running " + test.name + "...");
+        listener.onRun(test);
         test.done = function() {
-          console.log("OK");
+          listener.onFinish(this);
           setTimeout(runNextTest, 0);
         };
         test.func(test);
         if (!test.isAsync)
           test.done();
         nextTest++;
-      } else
-        console.log("All tests passed.");
+      }
     }
 
     runNextTest();

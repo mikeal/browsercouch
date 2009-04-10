@@ -3,14 +3,44 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
   <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+  <link rel="stylesheet" type="text/css" media="all"
+        href="index.css" />
   <title>Browser Couch Tests</title>
 </head>
 <body>
 <h1>Browser Couch Tests</h1>
+<div id="status">
+</div>
 </body>
 <script src="browser-couch.js"></script>
 <script src="tests.js"></script>
 <script>
-Tests.run();
+var listener = {
+  onReady: function(tests) {
+    var status = document.getElementById("status");
+    for (var i = 0; i < tests.length; i++) {
+      var test = tests[i];
+      var div = document.createElement("div");
+      div.className = "test pending";
+      div.id = "test_" + test.id;
+      div.textContent = test.name + " pending";
+      status.appendChild(div);
+    }
+  },
+  onRun: function(test) {
+    var div = document.getElementById("test_" + test.id);
+    div.textContent = test.name + " running";
+    div.className = "test in-progress";
+  },
+  onFinish: function(test) {
+    var div = document.getElementById("test_" + test.id);
+    div.textContent = test.name + " OK";
+    div.className = "test successful";
+  }
+};
+
+Tests.run(listener);
 </script>
 </html>
