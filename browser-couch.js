@@ -205,15 +205,20 @@ var BrowserCouch = {
   _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
                                      finished, chunkSize) {
     var len = dict.getLength();
-    var mapResult = {};
+    var mapKeys = {};
+    var mapValues = {};
+    var currDoc;
 
     function emit(key, value) {
       // TODO: This assumes that the key will always be
       // an indexable value. We may have to hash the value,
       // though, if it's e.g. an Object.
-      if (!mapResult[key])
-        mapResult[key] = [];
-      mapResult[key].push(value);
+      if (!mapKeys[key]) {
+        mapKeys[key] = [];
+        mapValues[key] = [];
+      }
+      mapKeys[key].push([key, currDoc.id]);
+      mapValues[key].push(value);
     }
 
     // Maximum number of items to process before giving the UI a chance
@@ -233,7 +238,8 @@ var BrowserCouch = {
       var iAtStart = i;
 
       do {
-        map(dict.getNthValue(i), emit);
+        currDoc = dict.getNthValue(i);
+        map(currDoc, emit);
         i++;
       } while (i - iAtStart < chunkSize &&
                i < len)
@@ -251,26 +257,20 @@ var BrowserCouch = {
     continueMap();
 
     function doReduce() {
+      var reduceResult;
       if (reduce) {
-        var keys = [];
-        var values = [];
-
-        for (key in mapResult) {
-          keys.push(key);
-          values.push(mapResult[key]);
+        reduceResult = {};
+        for (key in mapKeys) {
+          reduceResult[key] = reduce(mapKeys[key],
+                                     mapValues[key]);
         }
-
-        finished(reduce(keys, values));
       } else {
-        var result = [];
-
-        for (key in mapResult) {
-          var values = mapResult[key];
-          for (var i = 0; i < values.length; i++)
-            result.push([key, values[i]]);
-        }
-        finished(result);
+        reduceResult = [];
+        for (key in mapValues)
+          for (var i = 0; i < mapValues[key].length; i++)
+            reduceResult.push([key, mapValues[key][i]]);
       }
+      finished(reduceResult);
     }
   }
 };

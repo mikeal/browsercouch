@@ -79,10 +79,10 @@ var Tests = {
                    emit(words[i], 1);
                },
                reduce: function(keys, values) {
-                 var totals = {};
-                 for (var i = 0; i < keys.length; i++)
-                   totals[keys[i]] = values[i].length;
-                 return totals;
+                 var sum = 0;
+                 for (var i = 0; i < values.length; i++)
+                   sum += values[i];
+                 return sum;
                },
                chunkSize: 1,
                progress: function(percentDone, resume) {
