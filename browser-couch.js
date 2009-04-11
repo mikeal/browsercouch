@@ -205,20 +205,22 @@ var BrowserCouch = {
   _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
                                      finished, chunkSize) {
     var len = dict.getLength();
-    var mapKeys = {};
-    var mapValues = {};
+    var mapKeyIndex = {};
+    var mapKeys = [];
+    var mapValues = [];
     var currDoc;
 
     function emit(key, value) {
       // TODO: This assumes that the key will always be
       // an indexable value. We may have to hash the value,
       // though, if it's e.g. an Object.
-      if (!mapKeys[key]) {
-        mapKeys[key] = [];
-        mapValues[key] = [];
+      if (typeof(mapKeyIndex[key]) == "undefined") {
+        mapKeys.push([]);
+        mapKeyIndex[key] = mapValues.push([]) - 1;
       }
-      mapKeys[key].push([key, currDoc.id]);
-      mapValues[key].push(value);
+      var index = mapKeyIndex[key];
+      mapKeys[index].push([key, currDoc.id]);
+      mapValues[index].push(value);
     }
 
     // Maximum number of items to process before giving the UI a chance
@@ -260,15 +262,18 @@ var BrowserCouch = {
       var reduceResult;
       if (reduce) {
         reduceResult = {};
-        for (key in mapKeys) {
-          reduceResult[key] = reduce(mapKeys[key],
-                                     mapValues[key]);
+        for (var i = 0; i < mapKeys.length; i++) {
+          var key = mapKeys[i][0][0];
+          reduceResult[key] = reduce(mapKeys[i],
+                                     mapValues[i]);
         }
       } else {
         reduceResult = [];
-        for (key in mapValues)
-          for (var i = 0; i < mapValues[key].length; i++)
-            reduceResult.push([key, mapValues[key][i]]);
+        for (i = 0; i < mapKeys.length; i++) {
+          var key = mapKeys[i][0][0];
+          for (var j = 0; j < mapValues[i].length; j++)
+            reduceResult.push([key, mapValues[i][j]]);
+        }
       }
       finished(reduceResult);
     }
