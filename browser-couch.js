@@ -88,21 +88,6 @@ var BrowserCouch = {
     var keysAndValues = [];
     var keyIndex = {};
 
-    function sort() {
-      keyIndex = {};
-      keysAndValues.sort(function compare(a, b) {
-                           if (a[0] < b[0])
-                             return -1;
-                           if (a[0] > b[0])
-                             return 1;
-                           return 0;
-                         });
-      for (var i = 0; i < keysAndValues.length; i++) {
-        var tuple = keysAndValues[i];
-        keyIndex[tuple[0]] = i;
-      }
-    }
-
     this.has = function Dictionary_has(key) {
       return (key in keyIndex);
     };
@@ -122,15 +107,17 @@ var BrowserCouch = {
     this.set = function Dictionary_set(key, value) {
       if (key in keyIndex)
         keysAndValues[keyIndex[key]][1] = value;
-      else {
-        keysAndValues.push([key, value]);
-        sort();
-      }
+      else
+        keyIndex[key] = keysAndValues.push([key, value]) - 1;
     };
 
     this.delete = function Dictionary_delete(key) {
       keysAndValues.splice(keyIndex[key], 1);
-      sort();
+      keyIndex = {};
+      for (var i = 0; i < keysAndValues.length; i++) {
+        var tuple = keysAndValues[i];
+        keyIndex[tuple[0]] = i;
+      }
     };
 
     this.clear = function Dictionary_clear() {
