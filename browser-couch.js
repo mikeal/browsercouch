@@ -85,55 +85,53 @@ var BrowserCouch = {
   },
 
   _Dictionary: function BC__Dictionary(JSON) {
-    var keysAndValues = [];
-    var keyIndex = {};
+    var dict = {};
+    var keys = [];
+
+    function regenerateKeys() {
+      keys = [];
+      for (key in dict)
+        keys.push(key);
+    }
 
     this.has = function Dictionary_has(key) {
-      return (key in keyIndex);
+      return (key in dict);
     };
 
-    this.getNthValue = function Dictionary_getNthValue(index) {
-      return keysAndValues[index][1];
-    };
-
-    this.getLength = function Dictionary_getLength() {
-      return keysAndValues.length;
+    this.getKeys = function Dictionary_getKeys() {
+      return keys;
     };
 
     this.get = function Dictionary_get(key) {
-      return keysAndValues[keyIndex[key]][1];
+      return dict[key];
     };
 
     this.set = function Dictionary_set(key, value) {
-      if (key in keyIndex)
-        keysAndValues[keyIndex[key]][1] = value;
-      else
-        keyIndex[key] = keysAndValues.push([key, value]) - 1;
+      if (!(key in dict))
+        keys.push(key);
+      dict[key] = value;
     };
 
     this.delete = function Dictionary_delete(key) {
-      keysAndValues.splice(keyIndex[key], 1);
-      keyIndex = {};
-      for (var i = 0; i < keysAndValues.length; i++) {
-        var tuple = keysAndValues[i];
-        keyIndex[tuple[0]] = i;
-      }
+      delete dict[key];
+
+      // TODO: If we're in JS 1.6 and have Array.indexOf(), we
+      // shouldn't have to rebuild the key index like this.
+      regenerateKeys();
     };
 
     this.clear = function Dictionary_clear() {
-      keysAndValues = [];
-      keyIndex = {};
+      dict = {};
+      keys = [];
     };
 
     this.toJSON = function Dictionary_toJSON() {
-      return JSON.stringify({keysAndValues: keysAndValues,
-                             keyIndex: keyIndex});
+      return JSON.stringify(dict);
     };
 
     this.fromJSON = function Dictionary_fromJSON(string) {
-      var obj = JSON.parse(string);
-      keysAndValues = obj.keysAndValues;
-      keyIndex = obj.keyIndex;
+      dict = JSON.parse(string);
+      regenerateKeys();
     };
   },
 
@@ -191,10 +189,10 @@ var BrowserCouch = {
 
   _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
                                      finished, chunkSize) {
-    var len = dict.getLength();
     var mapKeyIndex = {};
     var mapKeys = [];
     var mapValues = [];
+    var keys = dict.getKeys();
     var currDoc;
 
     function emit(key, value) {
@@ -227,17 +225,17 @@ var BrowserCouch = {
       var iAtStart = i;
 
       do {
-        currDoc = dict.getNthValue(i);
+        currDoc = dict.get(keys[i]);
         map(currDoc, emit);
         i++;
       } while (i - iAtStart < chunkSize &&
-               i < len)
+               i < keys.length)
 
-      if (i == len)
+      if (i == keys.length)
         doReduce();
       else {
         if (progress)
-          progress(i / len, continueMap);
+          progress(i / keys.length, continueMap);
         else
           window.setTimeout(continueMap, DEFAULT_UI_BREATHE_TIME);
       }
