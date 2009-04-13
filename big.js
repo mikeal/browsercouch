@@ -108,7 +108,9 @@ function start() {
            }}
         );
       }
-    });
+    },
+    new FakeStorage()
+  );
 }
 
 window.addEventListener("load", start, false);

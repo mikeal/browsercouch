@@ -84,6 +84,46 @@ var ModuleLoader = {
   }
 };
 
+function FakeStorage() {
+  var db = {};
+
+  function deepCopy(obj) {
+    if (typeof(obj) == "object") {
+      var copy;
+
+      if (obj.constructor.name == "Array")
+        copy = new Array();
+      else
+        copy = new Object();
+
+      for (name in obj) {
+        if (obj.hasOwnProperty(name)) {
+          var property = obj[name];
+          if (typeof(property) == "object")
+            copy[name] = deepCopy(property);
+          else
+            copy[name] = property;
+        }
+      }
+
+      return copy;
+    } else
+      return obj;
+  }
+
+  this.get = function FS_get(name, cb) {
+    if (!(name in db))
+      cb(null);
+    else
+      cb(db[name]);
+  };
+
+  this.put = function FS_put(name, obj, cb) {
+    db[name] = deepCopy(obj);
+    cb();
+  };
+};
+
 function LocalStorage(JSON) {
   var storage;
 
@@ -191,14 +231,6 @@ var BrowserCouch = {
     var self = this;
     var dbName = 'BrowserCouch_DB_' + name;
 
-    storage.get(
-      dbName,
-      function(obj) {
-        if (obj)
-          dict.unpickle(obj);
-        cb(self);
-      });
-
     function commitToStorage(cb) {
       if (!cb)
         cb = function() {};
@@ -246,6 +278,14 @@ var BrowserCouch = {
                               options.finished,
                               options.chunkSize);
     };
+
+    storage.get(
+      dbName,
+      function(obj) {
+        if (obj)
+          dict.unpickle(obj);
+        cb(self);
+      });
   },
 
   _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
