@@ -89,10 +89,14 @@ var Tests = {
                },
                finished: function(result) {
                  self.assertEqual(progressCalled, true);
-                 self.assertEqual(result.hello, 2);
-                 self.assertEqual(result.there, 2);
-                 self.assertEqual(result.dude, 1);
-                 self.assertEqual(result.dogen, 1);
+
+                 var expected = {rows: [{key: "dogen", value: 1},
+                                        {key: "dude", value: 1},
+                                        {key: "hello", value: 2},
+                                        {key: "there", value: 2}]};
+
+                 self.assertEqual(JSON.stringify(expected),
+                                  JSON.stringify(result));
                  self.done();
                }});
           });

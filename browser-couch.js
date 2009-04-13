@@ -189,9 +189,8 @@ var BrowserCouch = {
 
   _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
                                      finished, chunkSize) {
-    var mapKeyIndex = {};
+    var mapDict = {};
     var mapKeys = [];
-    var mapValues = [];
     var keys = dict.getKeys();
     var currDoc;
 
@@ -199,13 +198,12 @@ var BrowserCouch = {
       // TODO: This assumes that the key will always be
       // an indexable value. We may have to hash the value,
       // though, if it's e.g. an Object.
-      if (typeof(mapKeyIndex[key]) == "undefined") {
-        mapKeys.push([]);
-        mapKeyIndex[key] = mapValues.push([]) - 1;
+      if (!(key in mapDict)) {
+        mapKeys.push(key);
+        mapDict[key] = {keys: [], values: []};
       }
-      var index = mapKeyIndex[key];
-      mapKeys[index].push([key, currDoc.id]);
-      mapValues[index].push(value);
+      mapDict[key].keys.push([key, currDoc.id]);
+      mapDict[key].values.push(value);
     }
 
     // Maximum number of items to process before giving the UI a chance
@@ -244,23 +242,35 @@ var BrowserCouch = {
     continueMap();
 
     function doReduce() {
-      var reduceResult;
+      var rows = [];
       if (reduce) {
-        reduceResult = {};
         for (var i = 0; i < mapKeys.length; i++) {
-          var key = mapKeys[i][0][0];
-          reduceResult[key] = reduce(mapKeys[i],
-                                     mapValues[i]);
+          var key = mapKeys[i];
+          var item = mapDict[key];
+          rows.push({key: key,
+                     value: reduce(item.keys, item.values)});
         }
       } else {
-        reduceResult = [];
         for (i = 0; i < mapKeys.length; i++) {
-          var key = mapKeys[i][0][0];
-          for (var j = 0; j < mapValues[i].length; j++)
-            reduceResult.push([key, mapValues[i][j]]);
+          var key = mapKeys[i];
+          var item = mapDict[key];
+          for (var j = 0; j < item.keys.length; j++) {
+            var id = item.keys[j][1];
+            var value = item.values[j];
+            rows.push({id: id,
+                       key: key,
+                       value: value});
+          }
         }
       }
-      finished(reduceResult);
+      rows.sort(function compare(a, b) {
+                  if (a.key < b.key)
+                    return -1;
+                  if (a.key > b.key)
+                    return 1;
+                  return 0;
+                });
+      finished({rows: rows});
     }
   }
 };
