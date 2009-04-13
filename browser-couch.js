@@ -142,7 +142,7 @@ var BrowserCouch = {
       dict.fromJSON(storage[dbName].value);
 
     function commitToStorage() {
-      storage[dbName].value = dict.toJSON();
+      storage[dbName] = dict.toJSON();
     }
 
     this.wipe = function DB_wipe(cb) {
