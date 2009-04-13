@@ -56,39 +56,54 @@ function makeCorpus(db, cb) {
   db.put(docs, cb);
 }
 
-BrowserCouch.get(
-  "big",
-  function(db) {
-    var status = document.getElementById("status");
-    if (db.getLength() == 0) {
-      status.textContent = "Building new corpus.";
-      db.wipe(function() { makeCorpus(db, run); });
-    } else
-      run();
+var config = document.getElementById("config");
+var status = document.getElementById("status");
+var result = document.getElementById("result");
 
-    function run() {
-      db.view(
-        {map: function(doc, emit) {
-                 var words = doc.content.split(" ");
-                 for (var i = 0; i < words.length; i++)
-                   emit(words[i], 1);
-         },
-         reduce: function(keys, values) {
-           var sum = 0;
-           for (var i = 0; i < values.length; i++)
-             sum += values[i];
-           return sum;
-         },
-         chunkSize: 5,
-         progress: function(phase, percent, resume) {
-           percent = Math.floor(percent * 100);
-           var msg = phase + " (" + percent + "%)";
-           status.textContent = msg;
-           window.setTimeout(resume, 5);
-         },
-         finished: function(result) {
-           status.textContent = "Done.";
-         }}
-      );
-    }
-  });
+status.textContent = "Please wait...";
+config.textContent = ("Counting word occurrences in a lexicon of " +
+                      LEXICON_SIZE + " words, using a corpus of " +
+                      CORPUS_SIZE + " documents, each of which is " +
+                      MIN_DOCUMENT_LENGTH + " to " + MAX_DOCUMENT_LENGTH +
+                      " words long.");
+
+function start() {
+  BrowserCouch.get(
+    "big",
+    function(db) {
+      if (db.getLength() == 0) {
+        status.textContent = "Building new corpus.";
+        db.wipe(function() { makeCorpus(db, run); });
+      } else
+        run();
+
+      function run() {
+        db.view(
+          {map: function(doc, emit) {
+             var words = doc.content.split(" ");
+             for (var i = 0; i < words.length; i++)
+               emit(words[i], 1);
+           },
+           reduce: function(keys, values) {
+             var sum = 0;
+             for (var i = 0; i < values.length; i++)
+               sum += values[i];
+             return sum;
+           },
+           chunkSize: 5,
+           progress: function(phase, percent, resume) {
+             percent = Math.floor(percent * 100);
+             var msg = phase + " (" + percent + "%)";
+             status.textContent = msg;
+             window.setTimeout(resume, 5);
+           },
+           finished: function(aResult) {
+             status.textContent = "Done.";
+             result.textContent = JSON.stringify(aResult);
+           }}
+        );
+      }
+    });
+}
+
+window.addEventListener("load", start, false);
