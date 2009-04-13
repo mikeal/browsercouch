@@ -2,7 +2,7 @@ var MAX_WORD_LENGTH = 10;
 var LEXICON_SIZE = 200;
 var MIN_DOCUMENT_LENGTH = 250;
 var MAX_DOCUMENT_LENGTH = 500;
-var CORPUS_SIZE = 100;
+var CORPUS_SIZE = 1000;
 
 // Returns a random integer between min and max
 // Using Math.round() will give you a non-uniform distribution!
@@ -45,15 +45,27 @@ function makeDocument(lexicon) {
   return doc.join(" ");
 }
 
-function makeCorpus(db, cb) {
+function makeCorpus(db, progress, chunkSize, cb) {
   var lexicon = makeLexicon();
   var docs = [];
+  var i = 0;
 
-  for (var i = 0; i < CORPUS_SIZE; i++)
-    docs.push({id: i,
-               content: makeDocument(lexicon)});
+  function makeNextDocument() {
+    var iAtStart = i;
 
-  db.put(docs, cb);
+    do {
+      docs.push({id: i,
+                 content: makeDocument(lexicon)});
+      i += 1;
+    } while (i - iAtStart < chunkSize &&
+             i < CORPUS_SIZE);
+    if (i == CORPUS_SIZE)
+      db.put(docs, cb);
+    else
+      progress(i / CORPUS_SIZE, makeNextDocument);
+  }
+
+  makeNextDocument();
 }
 
 var config = document.getElementById("config");
@@ -72,8 +84,19 @@ function start() {
     "big",
     function(db) {
       if (db.getLength() == 0) {
-        status.textContent = "Building new corpus.";
-        db.wipe(function() { makeCorpus(db, run); });
+        db.wipe(function() {
+                  makeCorpus(
+                    db,
+                    function(percent, resume) {
+                      status.textContent = ("building new corpus (" +
+                                            Math.floor(percent * 100) +
+                                            "%)");
+                      window.setTimeout(resume, 5);
+                    },
+                    20,
+                    run
+                  );
+                });
       } else
         run();
 
