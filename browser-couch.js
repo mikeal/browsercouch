@@ -84,45 +84,59 @@ var ModuleLoader = {
   }
 };
 
-var BrowserCouch = {
-  USE_EVAL_FOR_JSON_PARSING: true,
+function LocalStorage(JSON) {
+  var storage;
 
-  get: function BC_get(name, cb, storage, JSON) {
-    var self = this;
+  if (window.globalStorage)
+    storage = window.globalStorage[location.hostname];
+  else {
+    if (window.localStorage)
+      storage = window.localStorage;
+    else
+      throw new Error("globalStorage/localStorage not available.");
+  }
 
-    function createDb() {
-      cb(new self._DB(name, storage, new self._Dictionary(JSON)));
-    }
-
-    if (!storage) {
-      if (window.globalStorage || window.localStorage) {
-        if (window.globalStorage)
-          storage = window.globalStorage[location.hostname];
-        else
-          storage = window.localStorage;
-        if (window.JSON) {
+  function ensureJSON(cb) {
+    if (!JSON) {
+      ModuleLoader.require(
+        "JSON",
+        function() {
           JSON = window.JSON;
-          createDb();
-        } else
-          ModuleLoader.require(
-            "JSON",
-            function() {
-              JSON = window.JSON;
-              if (BrowserCouch.USE_EVAL_FOR_JSON_PARSING)
-                JSON.parse = function JSON_parse(string) {
-                  return eval("(" + string + ")");
-                };
-              createDb();
-            });
-      } else {
-        /* TODO: Consider using JSPersist or something else here. */
-        throw new Error('unable to find persistent storage backend');
-      }
+          cb();
+        });
     } else
-      createDb();
+      cb();
+  }
+
+  this.get = function LS_get(name, cb) {
+    if (name in storage && storage[name].value)
+      ensureJSON(
+        function() {
+          var obj = JSON.parse(storage[name].value);
+          cb(obj);
+        });
+    else
+      cb(null);
+  };
+
+  this.put = function LS_put(name, obj, cb) {
+    ensureJSON(
+      function() {
+        storage[name] = JSON.stringify(obj);
+        cb();
+      });
+  };
+}
+
+var BrowserCouch = {
+  get: function BC_get(name, cb, storage) {
+    if (!storage)
+      storage = new LocalStorage();
+
+    new this._DB(name, storage, new this._Dictionary(), cb);
   },
 
-  _Dictionary: function BC__Dictionary(JSON) {
+  _Dictionary: function BC__Dictionary() {
     var dict = {};
     var keys = [];
 
@@ -163,31 +177,37 @@ var BrowserCouch = {
       keys = [];
     };
 
-    this.toJSON = function Dictionary_toJSON() {
-      return JSON.stringify(dict);
+    this.pickle = function Dictionary_pickle() {
+      return dict;
     };
 
-    this.fromJSON = function Dictionary_fromJSON(string) {
-      dict = JSON.parse(string);
+    this.unpickle = function Dictionary_unpickle(obj) {
+      dict = obj;
       regenerateKeys();
     };
   },
 
-  _DB: function BC__DB(name, storage, dict) {
+  _DB: function BC__DB(name, storage, dict, cb) {
+    var self = this;
     var dbName = 'BrowserCouch_DB_' + name;
 
-    if (dbName in storage && storage[dbName].value)
-      dict.fromJSON(storage[dbName].value);
+    storage.get(
+      dbName,
+      function(obj) {
+        if (obj)
+          dict.unpickle(obj);
+        cb(self);
+      });
 
-    function commitToStorage() {
-      storage[dbName] = dict.toJSON();
+    function commitToStorage(cb) {
+      if (!cb)
+        cb = function() {};
+      storage.put(dbName, dict.pickle(), cb);
     }
 
     this.wipe = function DB_wipe(cb) {
       dict.clear();
-      commitToStorage();
-      if (cb)
-        cb();
+      commitToStorage(cb);
     };
 
     this.get = function DB_get(id, cb) {
@@ -204,8 +224,7 @@ var BrowserCouch = {
       } else
         dict.set(document.id, document);
 
-      commitToStorage();
-      cb();
+      commitToStorage(cb);
     };
 
     this.getLength = function DB_getLength() {
