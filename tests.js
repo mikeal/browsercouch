@@ -82,9 +82,11 @@ var Tests = {
                  return sum;
                },
                chunkSize: 1,
-               progress: function(percentDone, resume) {
-                 self.assertEqual(percentDone, 0.5);
-                 progressCalled = true;
+               progress: function(phase, percentDone, resume) {
+                 if (phase == "map") {
+                   self.assertEqual(percentDone, 0.5);
+                   progressCalled = true;
+                 }
                  resume();
                },
                finished: function(result) {

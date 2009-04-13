@@ -192,6 +192,7 @@ var BrowserCouch = {
     var mapDict = {};
     var mapKeys = [];
     var keys = dict.getKeys();
+    var rows = [];
     var currDoc;
 
     function emit(key, value) {
@@ -233,7 +234,7 @@ var BrowserCouch = {
         doReduce();
       else {
         if (progress)
-          progress(i / keys.length, continueMap);
+          progress("map", i / keys.length, continueMap);
         else
           window.setTimeout(continueMap, DEFAULT_UI_BREATHE_TIME);
       }
@@ -242,14 +243,32 @@ var BrowserCouch = {
     continueMap();
 
     function doReduce() {
-      var rows = [];
       if (reduce) {
-        for (var i = 0; i < mapKeys.length; i++) {
-          var key = mapKeys[i];
-          var item = mapDict[key];
-          rows.push({key: key,
-                     value: reduce(item.keys, item.values)});
+        var i = 0;
+
+        function continueReduce() {
+          var iAtStart = i;
+
+          do {
+            var key = mapKeys[i];
+            var item = mapDict[key];
+            rows.push({key: key,
+                       value: reduce(item.keys, item.values)});
+            i++;
+          } while (i - iAtStart < chunkSize &&
+                   i < mapKeys.length)
+
+          if (i == mapKeys.length)
+            doSort();
+          else {
+            if (progress)
+              progress("reduce", i / mapKeys.length, continueReduce);
+            else
+              window.setTimeout(continueReduce, DEFAULT_UI_BREATHE_TIME);
+          }
         }
+
+        continueReduce();
       } else {
         for (i = 0; i < mapKeys.length; i++) {
           var key = mapKeys[i];
@@ -262,7 +281,12 @@ var BrowserCouch = {
                        value: value});
           }
         }
+
+        doSort();
       }
+    }
+
+    function doSort() {
       rows.sort(function compare(a, b) {
                   if (a.key < b.key)
                     return -1;
