@@ -35,6 +35,8 @@
  * ***** END LICENSE BLOCK ***** */
 
 var BrowserCouch = {
+  USE_EVAL_FOR_JSON_PARSING: true,
+
   get: function BC_get(name, cb, storage, JSON) {
     var self = this;
 
@@ -59,6 +61,10 @@ var BrowserCouch = {
               if (!window.JSON)
                 throw new Error('JSON library failed to load');
               JSON = window.JSON;
+              if (BrowserCouch.USE_EVAL_FOR_JSON_PARSING)
+                JSON.parse = function JSON_parse(string) {
+                  return eval("(" + string + ")");
+                };
               createDb();
             });
       } else {
