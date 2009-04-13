@@ -170,6 +170,10 @@ var BrowserCouch = {
       cb();
     };
 
+    this.getLength = function DB_getLength() {
+      return dict.getKeys().length;
+    };
+
     this.view = function DB_view(options) {
       // TODO: Add support for worker threads.
 
