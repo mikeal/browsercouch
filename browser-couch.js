@@ -34,6 +34,56 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+var ModuleLoader = {
+  LIBS: {JSON: "json2.js"},
+
+  require: function ML_require(libs, cb) {
+    var self = this;
+    var i = 0;
+    var lastLib = "";
+
+    if (libs.constructor.name != "Array")
+      libs = [libs];
+
+    function loadNextLib() {
+      if (lastLib && !window[lastLib])
+        throw new Error("Failed to load library: " + lastLib);
+      if (i == libs.length)
+        cb();
+      else {
+        var libName = libs[i];
+        i += 1;
+        if (window.libName)
+          loadNextLib();
+        else {
+          var libUrl = self.LIBS[libName];
+          if (!libUrl)
+            throw new Error("Unknown lib: " + libName);
+          lastLib = libName;
+          self._loadScript(libUrl, window, loadNextLib);
+        }
+      }
+    }
+
+    loadNextLib();
+  },
+
+  _loadScript: function ML__loadScript(url, window, cb) {
+    var doc = window.document;
+    var script = doc.createElement("script");
+    script.setAttribute("src", url);
+    script.addEventListener(
+      "load",
+      function onLoad() {
+        script.removeEventListener("load", onLoad, false);
+        cb();
+      },
+      false
+    );
+    doc.body.appendChild(script);
+  }
+};
+
 var BrowserCouch = {
   USE_EVAL_FOR_JSON_PARSING: true,
 
@@ -54,12 +104,9 @@ var BrowserCouch = {
           JSON = window.JSON;
           createDb();
         } else
-          self._loadScript(
-            "json2.js",
-            window,
+          ModuleLoader.require(
+            "JSON",
             function() {
-              if (!window.JSON)
-                throw new Error('JSON library failed to load');
               JSON = window.JSON;
               if (BrowserCouch.USE_EVAL_FOR_JSON_PARSING)
                 JSON.parse = function JSON_parse(string) {
@@ -73,21 +120,6 @@ var BrowserCouch = {
       }
     } else
       createDb();
-  },
-
-  _loadScript: function BC__loadScript(url, window, cb) {
-    var doc = window.document;
-    var script = doc.createElement("script");
-    script.setAttribute("src", url);
-    script.addEventListener(
-      "load",
-      function onLoad() {
-        script.removeEventListener("load", onLoad, false);
-        cb();
-      },
-      false
-    );
-    doc.body.appendChild(script);
   },
 
   _Dictionary: function BC__Dictionary(JSON) {
