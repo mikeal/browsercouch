@@ -97,9 +97,13 @@ var Tests = {
                                         {key: "hello", value: 2},
                                         {key: "there", value: 2}]};
 
-                 self.assertEqual(JSON.stringify(expected),
-                                  JSON.stringify(result));
-                 self.done();
+                 ModuleLoader.require(
+                   "JSON",
+                   function() {
+                     self.assertEqual(JSON.stringify(expected),
+                                      JSON.stringify(result));
+                     self.done();
+                   });
                }});
           });
       });

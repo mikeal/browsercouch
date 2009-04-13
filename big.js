@@ -99,7 +99,12 @@ function start() {
            },
            finished: function(aResult) {
              status.textContent = "Done.";
-             result.textContent = JSON.stringify(aResult);
+
+             ModuleLoader.require(
+               "JSON",
+               function() {
+                 result.textContent = JSON.stringify(aResult);
+               });
            }}
         );
       }
