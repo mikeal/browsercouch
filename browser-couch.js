@@ -300,12 +300,13 @@ var BrowserCouch = {
       // TODO: This assumes that the key will always be
       // an indexable value. We may have to hash the value,
       // though, if it's e.g. an Object.
-      if (!(key in mapDict)) {
+      var item = mapDict[key];
+      if (!item) {
         mapKeys.push(key);
-        mapDict[key] = {keys: [], values: []};
+        item = mapDict[key] = {keys: [], values: []};
       }
-      mapDict[key].keys.push([key, currDoc.id]);
-      mapDict[key].values.push(value);
+      item.keys.push([key, currDoc.id]);
+      item.values.push(value);
     }
 
     // Maximum number of items to process before giving the UI a chance
