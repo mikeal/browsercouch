@@ -93,6 +93,57 @@ var ModuleLoader = {
   }
 };
 
+function WebWorkerMapReducer(numWorkers, Worker) {
+  if (!Worker)
+    Worker = window.Worker;
+
+  var pool = [];
+
+  function MapWorker() {
+    var worker = new Worker('worker-map-reducer.js');
+    var onDone;
+
+    worker.onmessage = function(event) {
+      onDone(event.data);
+    };
+
+    this.map = function MW_map(map, dict, cb) {
+      onDone = cb;
+      worker.postMessage({map: map.toString(), dict: dict});
+    };
+  }
+
+  for (var i = 0; i < numWorkers; i++)
+    pool.push(new MapWorker());
+
+  this.map = function WWMR_map(map, dict, progress, chunkSize, finished) {
+    pool[0].map(map,
+                dict.pickle(),
+                function onDone(mapDict) {
+                  var mapKeys = [];
+                  for (name in mapDict)
+                    mapKeys.push(name);
+                  mapKeys.sort();
+                  finished({dict: mapDict, keys: mapKeys});
+                });
+
+    // TODO:
+
+    // Break up the dict into multiple chunks.
+
+    // Issue each worker a chunk.
+
+    // When a worker is done with a chunk, pass it a new one and call
+    // the progress callback.
+
+    // When there are no more chunks left to pass out, we're done;
+    // merge all the results into a single mapResult and pass it
+    // to the finished() callback.
+  };
+
+  this.reduce = SingleThreadedMapReducer.reduce;
+};
+
 var SingleThreadedMapReducer = {
   map: function STMR_map(map, dict, progress,
                          chunkSize, finished) {
