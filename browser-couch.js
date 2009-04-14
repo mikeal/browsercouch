@@ -137,7 +137,7 @@ var SingleThreadedMapReducer = {
   },
 
   reduce: function STMR_reduce(reduce, mapResult, progress,
-                                chunkSize, finished) {
+                               chunkSize, finished) {
     var rows = [];
     var mapDict = mapResult.dict;
     var mapKeys = mapResult.keys;
