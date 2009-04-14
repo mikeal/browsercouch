@@ -34,6 +34,15 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+function isArray(value) {
+  // Taken from "Remedial Javascript" by Douglas Crockford:
+  // http://javascript.crockford.com/remedial.html
+
+  return (typeof value.length === 'number' &&
+          !(value.propertyIsEnumerable('length')) &&
+          typeof value.splice === 'function');
+}
+
 var ModuleLoader = {
   LIBS: {JSON: "json2.js"},
 
@@ -42,7 +51,7 @@ var ModuleLoader = {
     var i = 0;
     var lastLib = "";
 
-    if (libs.constructor.name != "Array")
+    if (!isArray(libs))
       libs = [libs];
 
     function loadNextLib() {
@@ -91,7 +100,7 @@ function FakeStorage() {
     if (typeof(obj) == "object") {
       var copy;
 
-      if (obj.constructor.name == "Array")
+      if (isArray(obj))
         copy = new Array();
       else
         copy = new Object();
@@ -204,7 +213,7 @@ var BrowserCouch = {
       dict[key] = value;
     };
 
-    this.delete = function Dictionary_delete(key) {
+    this.remove = function Dictionary_delete(key) {
       delete dict[key];
 
       // TODO: If we're in JS 1.6 and have Array.indexOf(), we
@@ -250,7 +259,7 @@ var BrowserCouch = {
     };
 
     this.put = function DB_put(document, cb) {
-      if (document.constructor.name == "Array") {
+      if (isArray(document)) {
         for (var i = 0; i < document.length; i++)
           dict.set(document[i].id, document[i]);
       } else

@@ -52,7 +52,7 @@ var Tests = {
     self.assertEqual(dict.has('foo'), true);
     self.assertEqual(dict.has('bar'), true);
     self.assertEqual(dict.has('spatula'), false);
-    dict.delete('bar');
+    dict.remove('bar');
     self.assertEqual(dict.getKeys().length, 1);
     self.assertEqual(dict.has('foo'), true);
   },
