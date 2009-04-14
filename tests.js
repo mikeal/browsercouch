@@ -111,6 +111,21 @@ var Tests = {
            }});
       });
   },
+  testViewMapFindRow_async: function(self) {
+    var map = this._mapWordFrequencies;
+    this._setupTestDb(
+      function(db) {
+        db.view(
+          {map: map,
+           finished: function(view) {
+             self.assertEqual(view.findRow("dogen"), 0);
+             self.assertEqual(view.findRow("dude"), 1);
+             self.assertEqual(view.findRow("hello"), 2);
+             self.assertEqual(view.findRow("there"), 4);
+             self.done();
+           }});
+      });
+  },
   testViewProgress_async: function(self) {
     var map = this._mapWordFrequencies;
     var reduce = this._reduceWordFrequencies;

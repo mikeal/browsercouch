@@ -413,13 +413,14 @@ var BrowserCouch = {
 
   _MapView: function BC__MapView(mapDict) {
     var rows = [];
-
+    var keyRows = [];
     this.rows = rows;
 
     var mapKeys = BrowserCouch._makeMapKeys(mapDict);
     for (var i = 0; i < mapKeys.length; i++) {
       var key = mapKeys[i];
       var item = mapDict[key];
+      keyRows.push({key: key, pos: rows.length});
       for (var j = 0; j < item.keys.length; j++) {
         var id = item.keys[j];
         var value = item.values[j];
@@ -428,5 +429,22 @@ var BrowserCouch = {
                    value: value});
       }
     }
+
+    function findRow(key, keyRows) {
+      if (keyRows.length > 1) {
+        var midpoint = Math.floor(keyRows.length / 2);
+        var keyRow = keyRows[midpoint];
+        if (key < keyRow.key)
+          return findRow(key, keyRows.slice(0, midpoint));
+        if (key > keyRow.key)
+          return findRow(key, keyRows.slice(midpoint));
+        return keyRow.pos;
+      } else
+        return keyRows[0].pos;
+    }
+
+    this.findRow = function MV_findRow(key) {
+      return findRow(key, keyRows);
+    };
   }
 };
