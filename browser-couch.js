@@ -93,6 +93,84 @@ var ModuleLoader = {
   }
 };
 
+var SingleThreadedMapReducer = {
+  map: function STMR_map(map, dict, progress,
+                         chunkSize, finished) {
+    var mapDict = {};
+    var keys = dict.getKeys();
+    var currDoc;
+
+    function emit(key, value) {
+      // TODO: This assumes that the key will always be
+      // an indexable value. We may have to hash the value,
+      // though, if it's e.g. an Object.
+      var item = mapDict[key];
+      if (!item)
+        item = mapDict[key] = {keys: [], values: []};
+      item.keys.push(currDoc.id);
+      item.values.push(value);
+    }
+
+    var i = 0;
+
+    function continueMap() {
+      var iAtStart = i;
+
+      do {
+        currDoc = dict.get(keys[i]);
+        map(currDoc, emit);
+        i++;
+      } while (i - iAtStart < chunkSize &&
+               i < keys.length)
+
+      if (i == keys.length) {
+        var mapKeys = [];
+        for (name in mapDict)
+          mapKeys.push(name);
+        mapKeys.sort();
+        finished({dict: mapDict, keys: mapKeys});
+      } else
+        progress("map", i / keys.length, continueMap);
+    }
+
+    continueMap();
+  },
+
+  reduce: function STMR_reduce(reduce, mapResult, progress,
+                                chunkSize, finished) {
+    var rows = [];
+    var mapDict = mapResult.dict;
+    var mapKeys = mapResult.keys;
+
+    var i = 0;
+
+    function continueReduce() {
+      var iAtStart = i;
+
+      do {
+        var key = mapKeys[i];
+        var item = mapDict[key];
+
+        // TODO: The map() method is only available on JS 1.6.
+        var keys = item.keys.map(function pairKeyWithDocId(docId) {
+                                   return [key, docId];
+                                 });
+        rows.push({key: key,
+                   value: reduce(keys, item.values)});
+        i++;
+      } while (i - iAtStart < chunkSize &&
+               i < mapKeys.length)
+
+      if (i == mapKeys.length)
+        finished(rows);
+      else
+        progress("reduce", i / mapKeys.length, continueReduce);
+    }
+
+    continueReduce();
+  }
+};
+
 function FakeStorage() {
   var db = {};
 
@@ -273,8 +351,6 @@ var BrowserCouch = {
     };
 
     this.view = function DB_view(options) {
-      // TODO: Add support for worker threads.
-
       if (!options.map)
         throw new Error('map function not provided');
       if (!options.finished)
@@ -299,23 +375,27 @@ var BrowserCouch = {
           window.setTimeout(resume, DEFAULT_UI_BREATHE_TIME);
         };
 
-      BrowserCouch._map(
+      var mapReducer = options.mapReducer;
+      if (!mapReducer)
+        mapReducer = SingleThreadedMapReducer;
+
+      mapReducer.map(
         options.map,
         dict,
         progress,
         chunkSize,
-        function(mapDict) {
+        function(mapResult) {
           if (options.reduce)
-            BrowserCouch._reduce(
+            mapReducer.reduce(
               options.reduce,
-              mapDict,
+              mapResult,
               progress,
               chunkSize,
               function(rows) {
                 options.finished(new BrowserCouch._View(rows));
               });
           else
-            options.finished(new BrowserCouch._MapView(mapDict));
+            options.finished(new BrowserCouch._MapView(mapResult));
         });
     };
 
@@ -326,85 +406,6 @@ var BrowserCouch = {
           dict.unpickle(obj);
         cb(self);
       });
-  },
-
-  _map: function BC__map(map, dict, progress,
-                         chunkSize, finished) {
-    var mapDict = {};
-    var keys = dict.getKeys();
-    var currDoc;
-
-    function emit(key, value) {
-      // TODO: This assumes that the key will always be
-      // an indexable value. We may have to hash the value,
-      // though, if it's e.g. an Object.
-      var item = mapDict[key];
-      if (!item)
-        item = mapDict[key] = {keys: [], values: []};
-      item.keys.push(currDoc.id);
-      item.values.push(value);
-    }
-
-    var i = 0;
-
-    function continueMap() {
-      var iAtStart = i;
-
-      do {
-        currDoc = dict.get(keys[i]);
-        map(currDoc, emit);
-        i++;
-      } while (i - iAtStart < chunkSize &&
-               i < keys.length)
-
-      if (i == keys.length)
-        finished(mapDict);
-      else
-        progress("map", i / keys.length, continueMap);
-    }
-
-    continueMap();
-  },
-
-  _reduce: function BC__reduce(reduce, mapDict, progress,
-                               chunkSize, finished) {
-    var rows = [];
-    var mapKeys = this._makeMapKeys(mapDict);
-
-    var i = 0;
-
-    function continueReduce() {
-      var iAtStart = i;
-
-      do {
-        var key = mapKeys[i];
-        var item = mapDict[key];
-
-        // TODO: The map() method is only available on JS 1.6.
-        var keys = item.keys.map(function pairKeyWithDocId(docId) {
-                                   return [key, docId];
-                                 });
-        rows.push({key: key,
-                   value: reduce(keys, item.values)});
-        i++;
-      } while (i - iAtStart < chunkSize &&
-               i < mapKeys.length)
-
-      if (i == mapKeys.length)
-        finished(rows);
-      else
-        progress("reduce", i / mapKeys.length, continueReduce);
-    }
-
-    continueReduce();
-  },
-
-  _makeMapKeys: function BC__makeMapKeys(mapDict) {
-    var mapKeys = [];
-    for (name in mapDict)
-      mapKeys.push(name);
-    mapKeys.sort();
-    return mapKeys;
   },
 
   _View: function BC__View(rows) {
@@ -428,12 +429,14 @@ var BrowserCouch = {
     };
   },
 
-  _MapView: function BC__MapView(mapDict) {
+  _MapView: function BC__MapView(mapResult) {
     var rows = [];
     var keyRows = [];
     this.rows = rows;
 
-    var mapKeys = BrowserCouch._makeMapKeys(mapDict);
+    var mapKeys = mapResult.keys;
+    var mapDict = mapResult.dict;
+
     for (var i = 0; i < mapKeys.length; i++) {
       var key = mapKeys[i];
       var item = mapDict[key];
