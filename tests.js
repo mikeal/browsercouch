@@ -75,7 +75,9 @@ var Tests = {
               }
             );
           });
-      });
+      },
+      new FakeStorage()
+    );
   },
   _mapWordFrequencies: function(doc, emit) {
     var words = doc.content.split(" ");
