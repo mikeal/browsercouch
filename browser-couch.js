@@ -345,6 +345,8 @@ var BrowserCouch = {
     continueMap();
 
     function doReduce() {
+      mapKeys.sort();
+
       if (reduce) {
         var i = 0;
 
@@ -366,7 +368,7 @@ var BrowserCouch = {
                    i < mapKeys.length)
 
           if (i == mapKeys.length)
-            doSort();
+            doneWithReduce();
           else {
             if (progress)
               progress("reduce", i / mapKeys.length, continueReduce);
@@ -389,18 +391,11 @@ var BrowserCouch = {
           }
         }
 
-        doSort();
+        doneWithReduce();
       }
     }
 
-    function doSort() {
-      rows.sort(function compare(a, b) {
-                  if (a.key < b.key)
-                    return -1;
-                  if (a.key > b.key)
-                    return 1;
-                  return 0;
-                });
+    function doneWithReduce() {
       finished({rows: rows});
     }
   }
