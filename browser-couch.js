@@ -305,7 +305,7 @@ var BrowserCouch = {
         mapKeys.push(key);
         item = mapDict[key] = {keys: [], values: []};
       }
-      item.keys.push([key, currDoc.id]);
+      item.keys.push(currDoc.id);
       item.values.push(value);
     }
 
@@ -354,8 +354,11 @@ var BrowserCouch = {
           do {
             var key = mapKeys[i];
             var item = mapDict[key];
+            var keys = item.keys.map(function pairKeyWithDocId(docId) {
+                                       return [key, docId];
+                                     });
             rows.push({key: key,
-                       value: reduce(item.keys, item.values)});
+                       value: reduce(keys, item.values)});
             i++;
           } while (i - iAtStart < chunkSize &&
                    i < mapKeys.length)
@@ -376,7 +379,7 @@ var BrowserCouch = {
           var key = mapKeys[i];
           var item = mapDict[key];
           for (var j = 0; j < item.keys.length; j++) {
-            var id = item.keys[j][1];
+            var id = item.keys[j];
             var value = item.values[j];
             rows.push({id: id,
                        key: key,
