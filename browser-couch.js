@@ -305,11 +305,17 @@ var BrowserCouch = {
         progress,
         chunkSize,
         function(mapDict) {
-          BrowserCouch._reduce(options.reduce,
-                               mapDict,
-                               progress,
-                               chunkSize,
-                               options.finished);
+          if (options.reduce)
+            BrowserCouch._reduce(
+              options.reduce,
+              mapDict,
+              progress,
+              chunkSize,
+              function(rows) {
+                options.finished(new BrowserCouch._View(rows));
+              });
+          else
+            options.finished(new BrowserCouch._MapView(mapDict));
         });
     };
 
@@ -363,57 +369,64 @@ var BrowserCouch = {
   _reduce: function BC__reduce(reduce, mapDict, progress,
                                chunkSize, finished) {
     var rows = [];
+    var mapKeys = this._makeMapKeys(mapDict);
+
+    var i = 0;
+
+    function continueReduce() {
+      var iAtStart = i;
+
+      do {
+        var key = mapKeys[i];
+        var item = mapDict[key];
+
+        // TODO: The map() method is only available on JS 1.6.
+        var keys = item.keys.map(function pairKeyWithDocId(docId) {
+                                   return [key, docId];
+                                 });
+        rows.push({key: key,
+                   value: reduce(keys, item.values)});
+        i++;
+      } while (i - iAtStart < chunkSize &&
+               i < mapKeys.length)
+
+      if (i == mapKeys.length)
+        finished(rows);
+      else
+        progress("reduce", i / mapKeys.length, continueReduce);
+    }
+
+    continueReduce();
+  },
+
+  _makeMapKeys: function BC__makeMapKeys(mapDict) {
     var mapKeys = [];
     for (name in mapDict)
       mapKeys.push(name);
-
     mapKeys.sort();
+    return mapKeys;
+  },
 
-    if (reduce) {
-      var i = 0;
+  _View: function BC__View(rows) {
+    this.rows = rows;
+  },
 
-      function continueReduce() {
-        var iAtStart = i;
+  _MapView: function BC__MapView(mapDict) {
+    var rows = [];
 
-        do {
-          var key = mapKeys[i];
-          var item = mapDict[key];
+    this.rows = rows;
 
-          // TODO: The map() method is only available on JS 1.6.
-          var keys = item.keys.map(function pairKeyWithDocId(docId) {
-                                     return [key, docId];
-                                   });
-          rows.push({key: key,
-                     value: reduce(keys, item.values)});
-          i++;
-        } while (i - iAtStart < chunkSize &&
-                 i < mapKeys.length)
-
-        if (i == mapKeys.length)
-          doneWithReduce();
-        else
-          progress("reduce", i / mapKeys.length, continueReduce);
+    var mapKeys = BrowserCouch._makeMapKeys(mapDict);
+    for (var i = 0; i < mapKeys.length; i++) {
+      var key = mapKeys[i];
+      var item = mapDict[key];
+      for (var j = 0; j < item.keys.length; j++) {
+        var id = item.keys[j];
+        var value = item.values[j];
+        rows.push({id: id,
+                   key: key,
+                   value: value});
       }
-
-      continueReduce();
-    } else {
-      for (i = 0; i < mapKeys.length; i++) {
-        var key = mapKeys[i];
-        var item = mapDict[key];
-        for (var j = 0; j < item.keys.length; j++) {
-          var id = item.keys[j];
-          var value = item.values[j];
-          rows.push({id: id,
-                     key: key,
-                     value: value});
-        }
-      }
-
-      doneWithReduce();
-    }
-
-    function doneWithReduce() {
-      finished({rows: rows});
     }
   }
 };
