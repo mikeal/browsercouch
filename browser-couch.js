@@ -354,6 +354,8 @@ var BrowserCouch = {
           do {
             var key = mapKeys[i];
             var item = mapDict[key];
+
+            // TODO: The map() method is only available on JS 1.6.
             var keys = item.keys.map(function pairKeyWithDocId(docId) {
                                        return [key, docId];
                                      });
