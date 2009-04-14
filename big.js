@@ -71,10 +71,10 @@ function makeCorpus(db, progress, chunkSize, cb) {
 }
 
 var config = document.getElementById("config");
-var status = document.getElementById("status");
+var statusArea = document.getElementById("status");
 var result = document.getElementById("result");
 
-status.textContent = "Please wait...";
+statusArea.textContent = "Please wait...";
 config.textContent = ("Counting word occurrences in a lexicon of " +
                       LEXICON_SIZE + " words, using a corpus of " +
                       CORPUS_SIZE + " documents, each of which is " +
@@ -106,9 +106,9 @@ function start() {
                     db,
                     makeProgress(
                       function(phase, percent) {
-                        status.textContent = ("building new corpus (" +
-                                              Math.floor(percent * 100) +
-                                              "%)");
+                        statusArea.textContent = ("building new corpus (" +
+                                                  Math.floor(percent * 100) +
+                                                  "%)");
                       }),
                     25,
                     run
@@ -135,10 +135,10 @@ function start() {
              function(phase, percent) {
                percent = Math.floor(percent * 100);
                var msg = phase + " (" + percent + "%)";
-               status.textContent = msg;
+               statusArea.textContent = msg;
              }),
            finished: function(aResult) {
-             status.textContent = "Done.";
+             statusArea.textContent = "Done.";
 
              ModuleLoader.require(
                "JSON",
