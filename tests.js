@@ -89,7 +89,28 @@ var Tests = {
       sum += values[i];
     return sum;
   },
-  testDbView_async: function(self) {
+  testViewMap_async: function(self) {
+    var map = this._mapWordFrequencies;
+    this._setupTestDb(
+      function(db) {
+        db.view(
+          {map: map,
+           finished: function(result) {
+             var expected = {
+               rows:[{"id":"chunky","key":"dogen","value":1},
+                     {"id":"monkey","key":"dude","value":1},
+                     {"id":"monkey","key":"hello","value":1},
+                     {"id":"chunky","key":"hello","value":1},
+                     {"id":"monkey","key":"there","value":1},
+                     {"id":"chunky","key":"there","value":1}]
+             };
+             self.assertEqual(JSON.stringify(expected),
+                              JSON.stringify(result));
+             self.done();
+           }});
+      });
+  },
+  testViewProgress_async: function(self) {
     var map = this._mapWordFrequencies;
     var reduce = this._reduceWordFrequencies;
     this._setupTestDb(
@@ -109,12 +130,23 @@ var Tests = {
            },
            finished: function(result) {
              self.assertEqual(progressCalled, true);
-
+             self.done();
+           }});
+      });
+  },
+  testViewMapReduce_async: function(self) {
+    var map = this._mapWordFrequencies;
+    var reduce = this._reduceWordFrequencies;
+    this._setupTestDb(
+      function(db) {
+        db.view(
+          {map: map,
+           reduce: reduce,
+           finished: function(result) {
              var expected = {rows: [{key: "dogen", value: 1},
                                     {key: "dude", value: 1},
                                     {key: "hello", value: 2},
                                     {key: "there", value: 2}]};
-
              self.assertEqual(JSON.stringify(expected),
                               JSON.stringify(result));
              self.done();
