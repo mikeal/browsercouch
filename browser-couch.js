@@ -62,7 +62,7 @@ var ModuleLoader = {
       else {
         var libName = libs[i];
         i += 1;
-        if (window.libName)
+        if (window[libName])
           loadNextLib();
         else {
           var libUrl = self.LIBS[libName];
