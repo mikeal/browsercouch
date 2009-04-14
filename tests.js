@@ -34,7 +34,7 @@ var Tests = {
           listener.onFinish(this);
           setTimeout(runNextTest, 0);
         };
-        test.func(test);
+        test.func.call(container, test);
         if (!test.isAsync)
           test.done();
         nextTest++;
@@ -57,55 +57,68 @@ var Tests = {
     self.assertEqual(dict.getKeys().length, 1);
     self.assertEqual(dict.has('foo'), true);
   },
-  testDbView_async: function(self) {
+  _setupTestDb: function(cb) {
     BrowserCouch.get(
       "blarg",
       function(db) {
-        var progressCalled = false;
-        db.put(
-          [{id: "monkey",
-            content: "hello there dude"},
-           {id: "chunky",
-            content: "hello there dogen"}],
+        db.wipe(
           function() {
-            var timesProgressCalled = 0;
-            db.view(
-              {map: function(doc, emit) {
-                 var words = doc.content.split(" ");
-                 for (var i = 0; i < words.length; i++)
-                   emit(words[i], 1);
-               },
-               reduce: function(keys, values) {
-                 var sum = 0;
-                 for (var i = 0; i < values.length; i++)
-                   sum += values[i];
-                 return sum;
-               },
-               chunkSize: 1,
-               progress: function(phase, percentDone, resume) {
-                 if (phase == "map") {
-                   self.assertEqual(percentDone, 0.5);
-                   progressCalled = true;
-                 }
-                 resume();
-               },
-               finished: function(result) {
-                 self.assertEqual(progressCalled, true);
-
-                 var expected = {rows: [{key: "dogen", value: 1},
-                                        {key: "dude", value: 1},
-                                        {key: "hello", value: 2},
-                                        {key: "there", value: 2}]};
-
-                 ModuleLoader.require(
-                   "JSON",
-                   function() {
-                     self.assertEqual(JSON.stringify(expected),
-                                      JSON.stringify(result));
-                     self.done();
-                   });
-               }});
+            db.put(
+              [{id: "monkey",
+                content: "hello there dude"},
+               {id: "chunky",
+                content: "hello there dogen"}],
+              function() {
+                ModuleLoader.require(
+                  "JSON",
+                  function() { cb(db); }
+                );
+              }
+            );
           });
+      });
+  },
+  _mapWordFrequencies: function(doc, emit) {
+    var words = doc.content.split(" ");
+    for (var i = 0; i < words.length; i++)
+      emit(words[i], 1);
+  },
+  _reduceWordFrequencies: function(keys, values) {
+    var sum = 0;
+    for (var i = 0; i < values.length; i++)
+      sum += values[i];
+    return sum;
+  },
+  testDbView_async: function(self) {
+    var map = this._mapWordFrequencies;
+    var reduce = this._reduceWordFrequencies;
+    this._setupTestDb(
+      function(db) {
+        var progressCalled = false;
+        var timesProgressCalled = 0;
+        db.view(
+          {map: map,
+           reduce: reduce,
+           chunkSize: 1,
+           progress: function(phase, percentDone, resume) {
+             if (phase == "map") {
+               self.assertEqual(percentDone, 0.5);
+               progressCalled = true;
+             }
+             resume();
+           },
+           finished: function(result) {
+             self.assertEqual(progressCalled, true);
+
+             var expected = {rows: [{key: "dogen", value: 1},
+                                    {key: "dude", value: 1},
+                                    {key: "hello", value: 2},
+                                    {key: "there", value: 2}]};
+
+             self.assertEqual(JSON.stringify(expected),
+                              JSON.stringify(result));
+             self.done();
+           }});
       });
   }
 };
