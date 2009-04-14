@@ -409,6 +409,23 @@ var BrowserCouch = {
 
   _View: function BC__View(rows) {
     this.rows = rows;
+
+    function findRow(key, rows) {
+      if (rows.length > 1) {
+        var midpoint = Math.floor(rows.length / 2);
+        var row = rows[midpoint];
+        if (key < row.key)
+          return findRow(key, rows.slice(0, midpoint));
+        if (key > row.key)
+          return midpoint + findRow(key, rows.slice(midpoint));
+        return midpoint;
+      } else
+        return 0;
+    }
+
+    this.findRow = function V_findRow(key) {
+      return findRow(key, rows);
+    };
   },
 
   _MapView: function BC__MapView(mapDict) {

@@ -150,6 +150,23 @@ var Tests = {
            }});
       });
   },
+  testViewMapReduceFindRow_async: function(self) {
+    var map = this._mapWordFrequencies;
+    var reduce = this._reduceWordFrequencies;
+    this._setupTestDb(
+      function(db) {
+        db.view(
+          {map: map,
+           reduce: reduce,
+           finished: function(view) {
+             self.assertEqual(view.findRow("dogen"), 0);
+             self.assertEqual(view.findRow("dude"), 1);
+             self.assertEqual(view.findRow("hello"), 2);
+             self.assertEqual(view.findRow("there"), 3);
+             self.done();
+           }});
+      });
+  },
   testViewMapReduce_async: function(self) {
     var map = this._mapWordFrequencies;
     var reduce = this._reduceWordFrequencies;
