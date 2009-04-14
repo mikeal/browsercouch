@@ -271,12 +271,37 @@ var BrowserCouch = {
       if (!options.finished)
         throw new Error('finished callback not provided');
 
-      BrowserCouch._mapReduce(options.map,
-                              options.reduce,
-                              dict,
-                              options.progress,
-                              options.finished,
-                              options.chunkSize);
+      // Maximum number of items to process before giving the UI a chance
+      // to breathe.
+      var DEFAULT_CHUNK_SIZE = 1000;
+
+      // If no progress callback is given, we'll automatically give the
+      // UI a chance to breathe for this many milliseconds before continuing
+      // processing.
+      var DEFAULT_UI_BREATHE_TIME = 50;
+
+      var chunkSize = options.chunkSize;
+      if (!chunkSize)
+        chunkSize = DEFAULT_CHUNK_SIZE;
+
+      var progress = options.progress;
+      if (!progress)
+        progress = function defaultProgress(phase, percent, resume) {
+          window.setTimeout(resume, DEFAULT_UI_BREATHE_TIME);
+        };
+
+      BrowserCouch._map(
+        options.map,
+        dict,
+        progress,
+        chunkSize,
+        function(mapDict) {
+          BrowserCouch._reduce(options.reduce,
+                               mapDict,
+                               progress,
+                               chunkSize,
+                               options.finished);
+        });
     };
 
     storage.get(
@@ -288,12 +313,10 @@ var BrowserCouch = {
       });
   },
 
-  _mapReduce: function BC__mapReduce(map, reduce, dict, progress,
-                                     finished, chunkSize) {
+  _map: function BC__map(map, dict, progress,
+                         chunkSize, finished) {
     var mapDict = {};
-    var mapKeys = [];
     var keys = dict.getKeys();
-    var rows = [];
     var currDoc;
 
     function emit(key, value) {
@@ -301,25 +324,12 @@ var BrowserCouch = {
       // an indexable value. We may have to hash the value,
       // though, if it's e.g. an Object.
       var item = mapDict[key];
-      if (!item) {
-        mapKeys.push(key);
+      if (!item)
         item = mapDict[key] = {keys: [], values: []};
-      }
       item.keys.push(currDoc.id);
       item.values.push(value);
     }
 
-    // Maximum number of items to process before giving the UI a chance
-    // to breathe.
-    var DEFAULT_CHUNK_SIZE = 1000;
-
-    // If no progress callback is given, we'll automatically give the
-    // UI a chance to breathe for this many milliseconds before continuing
-    // processing.
-    var DEFAULT_UI_BREATHE_TIME = 50;
-
-    if (!chunkSize)
-      chunkSize = DEFAULT_CHUNK_SIZE;
     var i = 0;
 
     function continueMap() {
@@ -333,66 +343,64 @@ var BrowserCouch = {
                i < keys.length)
 
       if (i == keys.length)
-        doReduce();
-      else {
-        if (progress)
-          progress("map", i / keys.length, continueMap);
-        else
-          window.setTimeout(continueMap, DEFAULT_UI_BREATHE_TIME);
-      }
+        finished(mapDict);
+      else
+        progress("map", i / keys.length, continueMap);
     }
 
     continueMap();
+  },
 
-    function doReduce() {
-      mapKeys.sort();
+  _reduce: function BC__reduce(reduce, mapDict, progress,
+                               chunkSize, finished) {
+    var rows = [];
+    var mapKeys = [];
+    for (name in mapDict)
+      mapKeys.push(name);
 
-      if (reduce) {
-        var i = 0;
+    mapKeys.sort();
 
-        function continueReduce() {
-          var iAtStart = i;
+    if (reduce) {
+      var i = 0;
 
-          do {
-            var key = mapKeys[i];
-            var item = mapDict[key];
+      function continueReduce() {
+        var iAtStart = i;
 
-            // TODO: The map() method is only available on JS 1.6.
-            var keys = item.keys.map(function pairKeyWithDocId(docId) {
-                                       return [key, docId];
-                                     });
-            rows.push({key: key,
-                       value: reduce(keys, item.values)});
-            i++;
-          } while (i - iAtStart < chunkSize &&
-                   i < mapKeys.length)
-
-          if (i == mapKeys.length)
-            doneWithReduce();
-          else {
-            if (progress)
-              progress("reduce", i / mapKeys.length, continueReduce);
-            else
-              window.setTimeout(continueReduce, DEFAULT_UI_BREATHE_TIME);
-          }
-        }
-
-        continueReduce();
-      } else {
-        for (i = 0; i < mapKeys.length; i++) {
+        do {
           var key = mapKeys[i];
           var item = mapDict[key];
-          for (var j = 0; j < item.keys.length; j++) {
-            var id = item.keys[j];
-            var value = item.values[j];
-            rows.push({id: id,
-                       key: key,
-                       value: value});
-          }
-        }
 
-        doneWithReduce();
+          // TODO: The map() method is only available on JS 1.6.
+          var keys = item.keys.map(function pairKeyWithDocId(docId) {
+                                     return [key, docId];
+                                   });
+          rows.push({key: key,
+                     value: reduce(keys, item.values)});
+          i++;
+        } while (i - iAtStart < chunkSize &&
+                 i < mapKeys.length)
+
+        if (i == mapKeys.length)
+          doneWithReduce();
+        else
+          progress("reduce", i / mapKeys.length, continueReduce);
       }
+
+      continueReduce();
+    } else {
+      for (i = 0; i < mapKeys.length; i++) {
+        var key = mapKeys[i];
+        var item = mapDict[key];
+        for (var j = 0; j < item.keys.length; j++) {
+          var id = item.keys[j];
+          var value = item.values[j];
+          rows.push({id: id,
+                     key: key,
+                     value: value});
+        }
+      }
+
+      doneWithReduce();
     }
 
     function doneWithReduce() {
