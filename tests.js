@@ -13,7 +13,6 @@ var Tests = {
           name: name,
           func: container[name],
           isAsync: name.indexOf("_async") != -1,
-          console: console,
           id: tests.length,
           assertEqual: function assertEqual(a, b) {
             if (a != b)
