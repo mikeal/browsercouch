@@ -3,6 +3,8 @@ var LEXICON_SIZE = 200;
 var MIN_DOCUMENT_LENGTH = 250;
 var MAX_DOCUMENT_LENGTH = 500;
 var CORPUS_SIZE = 1000;
+var UI_LOCK_LIMIT = 100;
+var UI_BREATHE_TIME = 10;
 
 // Returns a random integer between min and max
 // Using Math.round() will give you a non-uniform distribution!
@@ -62,7 +64,7 @@ function makeCorpus(db, progress, chunkSize, cb) {
     if (i == CORPUS_SIZE)
       db.put(docs, cb);
     else
-      progress(i / CORPUS_SIZE, makeNextDocument);
+      progress("make-documents", i / CORPUS_SIZE, makeNextDocument);
   }
 
   makeNextDocument();
@@ -79,6 +81,21 @@ config.textContent = ("Counting word occurrences in a lexicon of " +
                       MIN_DOCUMENT_LENGTH + " to " + MAX_DOCUMENT_LENGTH +
                       " words long.");
 
+function makeProgress(func) {
+  var lastDate = new Date();
+  function progress(phase, percent, resume) {
+    var currDate = new Date();
+    if (currDate - lastDate > UI_LOCK_LIMIT) {
+      lastDate = currDate;
+      func.call(this, phase, percent);
+      window.setTimeout(resume, UI_BREATHE_TIME);
+    } else
+      window.setTimeout(resume, 0);
+  }
+
+  return progress;
+}
+
 function start() {
   BrowserCouch.get(
     "big",
@@ -87,13 +104,13 @@ function start() {
         db.wipe(function() {
                   makeCorpus(
                     db,
-                    function(percent, resume) {
-                      status.textContent = ("building new corpus (" +
-                                            Math.floor(percent * 100) +
-                                            "%)");
-                      window.setTimeout(resume, 5);
-                    },
-                    20,
+                    makeProgress(
+                      function(phase, percent) {
+                        status.textContent = ("building new corpus (" +
+                                              Math.floor(percent * 100) +
+                                              "%)");
+                      }),
+                    25,
                     run
                   );
                 });
@@ -113,13 +130,13 @@ function start() {
                sum += values[i];
              return sum;
            },
-           chunkSize: 5,
-           progress: function(phase, percent, resume) {
-             percent = Math.floor(percent * 100);
-             var msg = phase + " (" + percent + "%)";
-             status.textContent = msg;
-             window.setTimeout(resume, 5);
-           },
+           chunkSize: 25,
+           progress: makeProgress(
+             function(phase, percent) {
+               percent = Math.floor(percent * 100);
+               var msg = phase + " (" + percent + "%)";
+               status.textContent = msg;
+             }),
            finished: function(aResult) {
              status.textContent = "Done.";
 
