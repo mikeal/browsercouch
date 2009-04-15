@@ -37,6 +37,8 @@
 // = BrowserCouch Test Suite =
 //
 // This file contains a simple test runner and suite for BrowserCouch.
+//
+// The suite can be run [[tests.html|here]].
 
 // == The Runner ==
 //
