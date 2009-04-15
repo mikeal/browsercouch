@@ -240,10 +240,10 @@ var SingleThreadedMapReducer = {
         var key = mapKeys[i];
         var item = mapDict[key];
 
-        // TODO: The map() method is only available on JS 1.6.
-        var keys = item.keys.map(function pairKeyWithDocId(docId) {
-                                   return [key, docId];
-                                 });
+        var keys = [];
+        for (var j = 0; j < keys.length; j++)
+          newKeys.push([key, item.keys[j]]);
+
         rows.push({key: key,
                    value: reduce(keys, item.values)});
         i++;
