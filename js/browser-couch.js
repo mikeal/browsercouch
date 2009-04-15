@@ -106,7 +106,7 @@ var ModuleLoader = {
   }
 };
 
-// == MapReducers ==
+// == MapReducer Implementations ==
 //
 // //MapReducer// is a generic interface for any map-reduce
 // implementation. Any object implementing this interface will need
@@ -298,7 +298,7 @@ var SingleThreadedMapReducer = {
   }
 };
 
-// == Storage ==
+// == Storage Implementations ==
 //
 // //Storage// is a generic interface for a persistent storage
 // implementation capable of storing JSON-able objects.
@@ -397,6 +397,10 @@ function LocalStorage(JSON) {
       });
   };
 }
+
+LocalStorage.isAvailable = (this.location &&
+                            this.location.protocol != "file:" &&
+                            (this.globalStorage || this.localStorage));
 
 // == BrowserCouch ==
 //

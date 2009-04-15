@@ -273,5 +273,36 @@ var Tests = {
              self.done();
            }});
       });
+  },
+  testLocalStorage_async: function(self) {
+    if (LocalStorage.isAvailable) {
+      ModuleLoader.require(
+        "JSON",
+        function() {
+          var storage = new LocalStorage(JSON);
+          var name = "BrowserCouch_test_DB";
+
+          var data = {test: "hi",
+                      foo: [1,2,3]};
+
+          storage.put(
+            name,
+            data,
+            function() {
+              storage.get(
+                name,
+                function(returnedData) {
+                  if (data == returnedData)
+                    throw new Error("Returned data should not be " +
+                                    "the same object as passed-in " +
+                                    "data.");
+                  self.assertEqual(JSON.stringify(data),
+                                   JSON.stringify(returnedData));
+                  self.done();
+                });
+            });
+        });
+    } else
+      self.skip();
   }
 };
