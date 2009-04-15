@@ -119,16 +119,14 @@ var Tests = {
     self.assertEqual(dict.has('foo'), true);
   },
   _setupTestDb: function(cb) {
+    var documents = this._testDbContents;
     BrowserCouch.get(
       "blarg",
       function(db) {
         db.wipe(
           function() {
             db.put(
-              [{id: "monkey",
-                content: "hello there dude"},
-               {id: "chunky",
-                content: "hello there dogen"}],
+              documents,
               function() {
                 ModuleLoader.require(
                   "JSON",
@@ -141,6 +139,10 @@ var Tests = {
       new FakeStorage()
     );
   },
+  _testDbContents: [{id: "monkey",
+                     content: "hello there dude"},
+                    {id: "chunky",
+                     content: "hello there dogen"}],
   _mapWordFrequencies: function(doc, emit) {
     var words = doc.content.split(" ");
     for (var i = 0; i < words.length; i++)
