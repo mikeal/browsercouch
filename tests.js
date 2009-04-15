@@ -29,6 +29,10 @@ var Tests = {
       if (nextTest < tests.length) {
         var test = tests[nextTest];
         listener.onRun(test);
+        test.skip = function() {
+          listener.onSkip(this);
+          setTimeout(runNextTest, 0);
+        };
         test.done = function() {
           listener.onFinish(this);
           setTimeout(runNextTest, 0);
@@ -166,6 +170,30 @@ var Tests = {
              self.done();
            }});
       });
+  },
+  testViewMapReduceWebWorker_async: function(self) {
+    if (window.Worker) {
+      var map = this._mapWordFrequencies;
+      var reduce = this._reduceWordFrequencies;
+      this._setupTestDb(
+        function(db) {
+          db.view(
+            {map: map,
+             reduce: reduce,
+             mapReducer: new WebWorkerMapReducer(2),
+             chunkSize: 1,
+             finished: function(result) {
+               var expected = {rows: [{key: "dogen", value: 1},
+                                      {key: "dude", value: 1},
+                                      {key: "hello", value: 2},
+                                      {key: "there", value: 2}]};
+               self.assertEqual(JSON.stringify(expected),
+                                JSON.stringify(result));
+               self.done();
+             }});
+        });
+    } else
+      self.skip();
   },
   testViewMapReduce_async: function(self) {
     var map = this._mapWordFrequencies;

@@ -24,5 +24,8 @@ h1 {
 }
 
 .pending {
+}
+
+.skipped {
     background-color: lightGrey;
 }

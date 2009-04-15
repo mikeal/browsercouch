@@ -34,6 +34,11 @@ var listener = {
     div.textContent = test.name + " running";
     div.className = "test in-progress";
   },
+  onSkip: function(test) {
+    var div = document.getElementById("test_" + test.id);
+    div.textContent = test.name + " SKIPPED";
+    div.className = "test skipped";
+  },
   onFinish: function(test) {
     var div = document.getElementById("test_" + test.id);
     div.textContent = test.name + " OK";
