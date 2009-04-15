@@ -21,17 +21,37 @@
     of <a href="http://en.wikipedia.org/wiki/CouchDB">CouchDB</a> on
     the client-side, and may even support integration with CouchDB in
     the future.</p>
-    <p>Things to do:</p>
-    <ul>
-      <li><a class="intra-wiki" href="tests.html">Run the test
-          suite.</a> (<a class="intra-wiki"
-          href="#js/tests.js">code</a>)</li>
-      <li><a class="intra-wiki" href="big.html">Run the semi-large
-          data set test.</a> (<a class="intra-wiki"
-          href="#js/big.js">code</a>)</li>
-      <li><a class="intra-wiki" href="#js/browser-couch.js">Read the
-          primary source code documentation.</a></li>
-    </ul>
+
+    <h2>Why?</h2>
+
+    <p>This prototype is intended as a response to Vladimir
+    Vukićević's blog post
+    entitled <a href="http://blog.vlad1.com/2009/04/06/html5-web-storage-and-sql/">HTML5
+    Web Storage and SQL</a>. A CouchDB-like API seems like a nice
+    solution to persistent storage on the Web because so many of its
+    semantics are delegated out to the JavaScript language, which
+    makes it potentially easy to standardize.  Furthermore, the
+    MapReduce paradigm also naturally takes advantage of multiple
+    processor cores&mdash;something that is increasingly common in
+    today's computing devices.</p>
+
+    <h2>Things to do</h2>
+
+    <p>Right now there isn't anything really shiny or flashy to see;
+    just the <a class="intra-wiki" href="tests.html">test suite</a>
+    and the <a class="intra-wiki" href="big.html">semi-large data set
+    test</a>, though they're not particularly exciting. In the future,
+    we'd like to make
+    CouchDB's <a href="http://couchdb.apache.org/screenshots.html">Futon</a>
+    client work entirely using BrowserCouch as its backend instead of
+    a CouchDB server, but that's a ways away.</p>
+
+    <p>If you'd like to see some code samples of what the BrowserCouch
+    API currently looks like, check out the <a class="intra-wiki"
+    href="#js/tests.js">annotated source code for the test suite</a>.
+    You can also read the <a class="intra-wiki"
+    href="#js/browser-couch.js">primary source code documentation</a>
+    for more on BrowserCouch's implementation.</p>
   </div>
 </div>
 </body>
