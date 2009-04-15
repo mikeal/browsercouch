@@ -44,7 +44,7 @@ function isArray(value) {
 }
 
 var ModuleLoader = {
-  LIBS: {JSON: "json2.js"},
+  LIBS: {JSON: "js/ext/json2.js"},
 
   require: function ML_require(libs, cb) {
     var self = this;
@@ -100,7 +100,7 @@ function WebWorkerMapReducer(numWorkers, Worker) {
   var pool = [];
 
   function MapWorker(id) {
-    var worker = new Worker('worker-map-reducer.js');
+    var worker = new Worker('js/worker-map-reducer.js');
     var onDone;
 
     worker.onmessage = function(event) {
