@@ -40,9 +40,10 @@
 
 // === {{{isArray()}}} ===
 //
-// A helper function to determine whether an object is an Array
-// or not. Taken from "Remedial Javascript" by Douglas Crockford
-// at http://javascript.crockford.com/remedial.html.
+// A helper function to determine whether an object is an Array or
+// not. Taken from
+// [[http://javascript.crockford.com/remedial.html|Remedial JavaScript]]
+// by Douglas Crockford.
 
 function isArray(value) {
   return (typeof value.length === 'number' &&
