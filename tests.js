@@ -104,10 +104,10 @@ var Tests = {
              var expected = {
                rows:[{"id":"chunky","key":"dogen","value":1},
                      {"id":"monkey","key":"dude","value":1},
-                     {"id":"monkey","key":"hello","value":1},
                      {"id":"chunky","key":"hello","value":1},
-                     {"id":"monkey","key":"there","value":1},
-                     {"id":"chunky","key":"there","value":1}]
+                     {"id":"monkey","key":"hello","value":1},
+                     {"id":"chunky","key":"there","value":1},
+                     {"id":"monkey","key":"there","value":1}]
              };
              self.assertEqual(JSON.stringify(expected),
                               JSON.stringify(result));

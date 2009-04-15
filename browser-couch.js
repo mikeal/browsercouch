@@ -521,7 +521,6 @@ var BrowserCouch = {
   _MapView: function BC__MapView(mapResult) {
     var rows = [];
     var keyRows = [];
-    this.rows = rows;
 
     var mapKeys = mapResult.keys;
     var mapDict = mapResult.dict;
@@ -530,13 +529,22 @@ var BrowserCouch = {
       var key = mapKeys[i];
       var item = mapDict[key];
       keyRows.push({key: key, pos: rows.length});
+      var newRows = [];
       for (var j = 0; j < item.keys.length; j++) {
         var id = item.keys[j];
         var value = item.values[j];
-        rows.push({id: id,
-                   key: key,
-                   value: value});
+        newRows.push({id: id,
+                      key: key,
+                      value: value});
       }
+      newRows.sort(function(a, b) {
+                     if (a.id < b.id)
+                       return -1;
+                     if (a.id > b.id)
+                       return 1;
+                     return 0;
+                   });
+      rows = rows.concat(newRows);
     }
 
     function findRow(key, keyRows) {
@@ -552,6 +560,7 @@ var BrowserCouch = {
         return keyRows[0].pos;
     }
 
+    this.rows = rows;
     this.findRow = function MV_findRow(key) {
       return findRow(key, keyRows);
     };
