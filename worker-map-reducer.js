@@ -18,7 +18,7 @@ function map(func, dict) {
   return mapDict;
 }
 
-onmessage = function(event) {
+function onmessage(event) {
   var mapFunc = eval("(" + event.data.map + ")");
   postMessage(map(mapFunc, event.data.dict));
 };
