@@ -34,14 +34,26 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-function isArray(value) {
-  // Taken from "Remedial Javascript" by Douglas Crockford:
-  // http://javascript.crockford.com/remedial.html
+// = BrowserCouch =
+//
+// This is the primary implementation file for BrowserCouch.
 
+// === {{{isArray()}}} ===
+//
+// A helper function to determine whether an object is an Array
+// or not. Taken from "Remedial Javascript" by Douglas Crockford
+// at http://javascript.crockford.com/remedial.html.
+
+function isArray(value) {
   return (typeof value.length === 'number' &&
           !(value.propertyIsEnumerable('length')) &&
           typeof value.splice === 'function');
 }
+
+// === {{{ModuleLoader}}} ===
+//
+// A really basic module loader that allows dependencies to be
+// "lazy-loaded" when their functionality is needed.
 
 var ModuleLoader = {
   LIBS: {JSON: "js/ext/json2.js"},
@@ -92,6 +104,22 @@ var ModuleLoader = {
     doc.body.appendChild(script);
   }
 };
+
+// == MapReducers ==
+//
+// //MapReducer// is a generic interface for any map-reduce
+// implementation. Any object implementing this interface will need
+// to be able to work asynchronously, passing back control to the
+// client at a given interval, so that the client has the ability to
+// pause/cancel or report progress on the calculation if needed.
+
+// === {{{WebWorkerMapReducer}}} ===
+//
+// A MapReducer that uses
+// [[https://developer.mozilla.org/En/Using_DOM_workers|Web Workers]]
+// for its implementation, allowing the client to take advantage of
+// multiple processor cores and potentially decouple the map-reduce
+// calculation from the user interface.
 
 function WebWorkerMapReducer(numWorkers, Worker) {
   if (!Worker)
@@ -179,8 +207,14 @@ function WebWorkerMapReducer(numWorkers, Worker) {
       nextJob(pool[i]);
   };
 
+  // TODO: Actually implement our own reduce() method here instead
+  // of delegating to the single-threaded version.
   this.reduce = SingleThreadedMapReducer.reduce;
 };
+
+// === {{{SingleThreadedMapReducer}}} ===
+//
+// A MapReducer that works on the current thread.
 
 var SingleThreadedMapReducer = {
   map: function STMR_map(map, dict, progress,
@@ -260,6 +294,17 @@ var SingleThreadedMapReducer = {
   }
 };
 
+// == Storage ==
+//
+// //Storage// is a generic interface for a persistent storage
+// implementation capable of storing JSON-able objects.
+
+// === {{{FakeStorage}}} ===
+//
+// This Storage implementation isn't actually persistent; it's just
+// a placeholder that can be used for testing purposes, or when no
+// persistent storage mechanisms are available.
+
 function FakeStorage() {
   var db = {};
 
@@ -299,6 +344,11 @@ function FakeStorage() {
     cb();
   };
 };
+
+// === {{{LocalStorage}}} ===
+//
+// This Storage implementation uses the browser's HTML5 support for
+// {{{localStorage}}} or {{{globalStorage}}} for object persistence.
 
 function LocalStorage(JSON) {
   var storage;
@@ -343,6 +393,11 @@ function LocalStorage(JSON) {
       });
   };
 }
+
+// == BrowserCouch ==
+//
+// {{{BrowserCouch}}} is the main object that clients will use.  It's
+// intended to be somewhat analogous to CouchDB's RESTful API.
 
 var BrowserCouch = {
   get: function BC_get(name, cb, storage) {
