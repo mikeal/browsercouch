@@ -120,6 +120,9 @@ var ModuleLoader = {
 // for its implementation, allowing the client to take advantage of
 // multiple processor cores and potentially decouple the map-reduce
 // calculation from the user interface.
+//
+// The script run by spawned Web Workers is
+// [[#js/worker-map-reducer.js|worker-map-reducer.js]].
 
 function WebWorkerMapReducer(numWorkers, Worker) {
   if (!Worker)
