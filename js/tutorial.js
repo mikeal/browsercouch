@@ -20,6 +20,7 @@ $(window).ready(
     // Set the width of the content to be the maximum number of
     // characters of code that can fit on a line.
     $('#content').css({width: charWidth * CHARS_PER_ROW});
+    $('#content').fadeIn();
 
     // Iterate through all the code snippets and trim them.
     var allCode = '';
