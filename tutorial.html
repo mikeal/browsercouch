@@ -16,31 +16,31 @@ database called <tt>blog-posts</tt> in BrowserCouch, you can use the
 following function:</p>
 
 <div class="example-code">
-BrowserCouch.get('blog-posts', onRetrieveDb, new FakeStorage());
+BrowserCouch.get('blog-posts', onRetrieveCb, new FakeStorage());
 </div>
 
 <p>It's clear that the first parameter is the name of the database we
 want; the second parameter is the callback that will be passed the
-database once it's fetched. The third parameter is optional, and
-specifies the engine that will be used to persistently store our
-database. In this case we're using a storage backend
-called <tt>FakeStorage</tt>, which just stores everything
-non-persistently in memory, because this is just a tutorial. We could
-just as easily leave out the third parameter to have BrowserCouch
-figure out the best storage backend based on our browser's
-capabilities.</p>
+database once it's fetched. The third parameter specifies the engine
+that will be used to persistently store our database across browsing
+sessions. In this case we're using <tt>FakeStorage</tt>, which just
+stores everything non-persistently in memory for the sake of
+example. We could just as easily leave out the third parameter to have
+BrowserCouch figure out the best storage backend based on our
+browser's capabilities.</p>
 
 <p>If the database doesn't already exist, an empty one will be created
 for us. Putting blog posts into the database can be done via
-an <tt>onRetrieveDb()</tt> function like this:</p>
+an <tt>onRetrieveCb()</tt> function like this:</p>
 
 <div class="example-code">
-function onRetrieveDb(db) {
-  gBlogPosts = db;
-  gBlogPosts.put(
+function onRetrieveCb(db) {
+  blogDb = db;
+  blogDb.put(
     [{id: 0, author: 'Myk', title: 'Burritos', content: 'Burritos are yum.'},
-     {id: 1, author: 'Thunder', title: 'Bacon', content: 'I like bacon.'}],
-    onCommitted
+     {id: 1, author: 'Thunder', title: 'Bacon', content: 'I like bacon.'},
+     {id: 2, author: 'Thunder', title: 'Beer', content: 'Beer is good too.'}],
+    onCommitCb
   );
 };
 </div>
@@ -49,14 +49,14 @@ function onRetrieveDb(db) {
 attribute, but aside from that, the item can contain any
 JSON-encodable data.</p>
 
-<p>Now it's possible to make a view that organizes all the posts by
-author:</p>
+<p>Now it's possible to make a view that organizes all the post titles
+by author:</p>
 
 <div class="example-code">
-function onCommitted() {
-  gBlogPosts.view({
+function onCommitCb() {
+  blogDb.view({
     map: function(doc, emit) {
-      emit(doc.author, doc);
+      emit(doc.author, doc.title);
     },
     finished: function(result) {
       displayInElement(result, 'author-keyed-view');
