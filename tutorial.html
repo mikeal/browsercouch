@@ -60,6 +60,7 @@ function onCommitCb() {
     },
     finished: function(result) {
       displayInElement(result, 'author-keyed-view');
+      tryAnotherView();
     }
   });
 }
@@ -68,6 +69,31 @@ function onCommitCb() {
 <p>The output placed in the <tt>author-keyed-view</tt> element is:</p>
 
 <div class="example-output" id="author-keyed-view">
+</div>
+
+<p>We could also try creating another view that adds a
+<tt>reduce()</tt> function to group together the blog post titles with
+the authors:</p>
+
+<div class="example-code">
+function tryAnotherView() {
+  blogDb.view({
+    map: function(doc, emit) {
+      emit(doc.author, doc.title);
+    },
+    reduce: function(keys, values) {
+      return values;
+    },
+    finished: function(result) {
+      displayInElement(result, 'author-titles-view');
+    }
+  });
+}
+</div>
+
+<p>The output is as follows:</p>
+
+<div class="example-output" id="author-titles-view">
 </div>
 
 <script src="js/ext/jquery.js"></script>
