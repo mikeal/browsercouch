@@ -102,7 +102,7 @@ function tryAnotherView() {
     },
     finished: function(result) {
       displayInElement(result, 'author-titles-view');
-      tryViewWithFindRow();
+      findRows(result);
     }
   });
 }
@@ -131,20 +131,10 @@ method to find the first row whose key matchest (or is closest to) the
 one you provide.  For example:</p>
 
 <div class="example-code">
-function tryViewWithFindRow() {
-  blogDb.view({
-    map: function(doc, emit) {
-      emit(doc.author, doc.title);
-    },
-    reduce: function(keys, values) {
-      return values;
-    },
-    finished: function(result) {
-      var rowIndex = result.findRow('Thunder');
-      displayInElement(result.rows[rowIndex], 'author-find-row-view');
-      tryMyView();
-    }
-  });
+function findRows(result) {
+    var rowIndex = result.findRow('Thunder');
+    displayInElement(result.rows[rowIndex], 'author-find-row-view');
+    tryMyView();
 }
 </div>
 
@@ -154,11 +144,10 @@ function tryViewWithFindRow() {
 
 <h1>Now You Try!</h1>
 
-<p>If your eyes are crossed right now, no worries&mdash;it took me a
-long time to understand exactly what MapReduce was doing, and I
-probably didn't explain it very well either. That said, I also found
-that the easiest way to understand how MapReduce worked was just to
-play around with making my own view.</p>
+<p>If your eyes are crossed right now, no worries&mdash;most people
+take a long time to understand exactly what MapReduce is doing. That
+said, the easiest way to understand how MapReduce works is just to
+play around with creating your own view.</p>
 
 <p>So, to get a better feel for how MapReduce works, you can use the
 text field below to try making your own view. Just press the tab key
