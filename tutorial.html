@@ -86,6 +86,7 @@ function tryAnotherView() {
     },
     finished: function(result) {
       displayInElement(result, 'author-titles-view');
+      tryMyView();
     }
   });
 }
@@ -95,6 +96,39 @@ function tryAnotherView() {
 
 <div class="example-output" id="author-titles-view">
 </div>
+
+<h1>Now You Try!</h1>
+
+<p>To get a better feel for how MapReduce works, you can use the text
+field below to try making your own view. Just press the tab key when
+you're done making changes to recompute the view.</p>
+
+<textarea class="example-code try-code">
+function tryMyView() {
+  blogDb.view({
+    map: function(doc, emit) {
+      emit(doc.author, doc.title);
+    },
+    reduce: function(keys, values) {
+      return values;
+    },
+    finished: function(result) {
+      displayInElement(result, 'try-my-view');
+    }
+  });
+}
+</textarea>
+
+<p>Here's the output to the above view:</p>
+
+<div class="example-output" id="try-my-view"></div>
+
+<h1>Where To Go From Here</h1>
+
+<p>There's features in the API that aren't covered here, so check out
+the check out the <a class="intra-wiki"
+href="index.html#js/tests.js">annotated source code for the test
+suite</a> for more sample code.</p>
 
 <script src="js/ext/jquery.js"></script>
 <script src="js/browser-couch.js"></script>

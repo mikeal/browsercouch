@@ -30,3 +30,18 @@ h1 {
     padding-left: 2em;
     color: gray;
 }
+
+.try-code {
+    border: 1px dotted black;
+}
+
+.intra-wiki {
+    color: black;
+    text-decoration: none;
+    border-bottom: solid 1px gray;
+}
+
+a {
+    color: black;
+    text-decoration: underline;
+}
