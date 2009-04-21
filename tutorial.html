@@ -24,11 +24,12 @@ to have, and its API is not stable at all.</p>
 <p>Finally, a note about the code examples in this tutorial: they're
 actually being executed in your browser, and their output is sometimes
 being displayed in this tutorial too. While this helps ensure that the
-software is working as intended and also allows for some interactive
-learning opportunities, right now it also means that some parts of the
-code examples may look a bit unusual. Furthermore, if you see any
-conspicuously blank areas in this tutorial, it could be because the
-tutorial code crashed&mdash;our apologies if this occurs.</p>
+software is working as intended and also allows for some <a
+class="intra-wiki" href="#try">interactive learning opportunities</a>,
+right now it also means that some parts of the code examples may look
+a bit unusual. Furthermore, if you see any conspicuously blank areas
+in this tutorial, it could be because the tutorial code
+crashed&mdash;our apologies if this occurs.</p>
 
 <p>With that out of the way, let's get started.</p>
 
@@ -39,7 +40,11 @@ database called <tt>blog-posts</tt> in BrowserCouch, you can use the
 following function:</p>
 
 <div class="example-code">
-BrowserCouch.get('blog-posts', onRetrieveCb, new FakeStorage());
+BrowserCouch.get('blog-posts',
+                 function onRetrieveCb(db) {
+                   blogDb = db; /* Save the DB for later. */ DONE();
+                 },
+                 new FakeStorage());
 </div>
 
 <p>It's clear that the first parameter is the name of the database we
@@ -54,24 +59,23 @@ easily leave out the third parameter to have BrowserCouch figure out
 the best storage backend based on our browser's capabilities.</p>
 
 <p>If the database doesn't already exist, an empty one will be created
-for us. Putting blog posts into the database can be done via
-an <tt>onRetrieveCb()</tt> function like this:</p>
+for us. Putting blog posts into the database is done through the
+<tt>put()</tt> method like so:</p>
 
 <div class="example-code">
-function onRetrieveCb(db) {
-  blogDb = db;
-  blogDb.put(
-    [{id: 0, author: 'Myk', title: 'Burritos', content: 'Burritos are yum.'},
-     {id: 1, author: 'Thunder', title: 'Bacon', content: 'I like bacon.'},
-     {id: 2, author: 'Thunder', title: 'Beer', content: 'Beer is good too.'}],
-    onPutCb
-  );
-};
+blogDb.put(
+  [{id: 0, author: 'Myk', title: 'Burritos', content: 'Burritos are yum.'},
+   {id: 1, author: 'Thunder', title: 'Bacon', content: 'I like bacon.'},
+   {id: 2, author: 'Thunder', title: 'Beer', content: 'Beer is good too.'}],
+  function onDone() { /* Do stuff... */ DONE();}
+);
 </div>
 
 <p>Every item we put into our database needs to have an <tt>id</tt>
 attribute, but aside from that, the item can contain any
 JSON-encodable data.</p>
+
+<h1>Views</h1>
 
 <p>Now that we've put some data into our database, we can play around
 with generating views on the data using the <a
@@ -80,18 +84,21 @@ For instance, here's an ad-hoc view using only the map phase that
 organizes all the post titles by author:</p>
 
 <div class="example-code">
-function onPutCb() {
-  blogDb.view({
-    map: function(doc, emit) {
-      emit(doc.author, doc.title);
-    },
-    finished: function(result) {
-      displayInElement(result, 'author-keyed-view');
-      tryAnotherView();
-    }
-  });
-}
+blogDb.view({
+  map: function(doc, emit) {
+    emit(doc.author, doc.title);
+  },
+  finished: function(result) {
+    displayInElement(result, 'author-keyed-view'); DONE();
+  }
+});
 </div>
+
+<p>The <tt>view()</tt> method above has lots of optional arguments,
+which is why we're passing in a single object with keys corresponding
+to argument names. The <tt>map</tt> argument is the function to use
+for the map phase, and the <tt>finished</tt> argument is the callback
+to pass the view results into when processing is complete.</p>
 
 <p>The output placed in the <tt>author-keyed-view</tt> element is:</p>
 
@@ -104,33 +111,35 @@ function then emitted key-value pairs which show up in the view. It's
 worth noting that <tt>map()</tt> can call <tt>emit()</tt> as much as
 it wants to; each call will add a new row to the view.</p>
 
-<p>We could also try creating another view that adds a
-<tt>reduce()</tt> function to group together the blog post titles with
-the authors:</p>
+<p>At this point you may want to jump to the <a class="intra-wiki"
+href="#try">Try It For Yourself</a> section to play around with making
+your own <tt>map()</tt> functions.</p>
+
+<p>The reduce phase of a view is totally optional and a little
+confusing. Let's try adding a <tt>reduce()</tt> function to our
+earlier view to group together the blog post titles with the
+authors:</p>
 
 <div class="example-code">
-function tryAnotherView() {
-  blogDb.view({
-    map: function(doc, emit) {
-      emit(doc.author, doc.title);
-    },
-    reduce: function(keys, values) {
-      return values;
-    },
-    finished: function(result) {
-      displayInElement(result, 'author-titles-view');
-      findRows(result);
-    }
-  });
-}
+blogDb.view({
+  map: function(doc, emit) {
+    emit(doc.author, doc.title);
+  },
+  reduce: function(keys, values) {
+    return values;
+  },
+  finished: function(result) {
+    authors = result; /* Save the result for later. */
+    displayInElement(authors, 'author-titles-view'); DONE();
+  }
+});
 </div>
 
 <p>The output is as follows:</p>
 
 <div class="example-output" id="author-titles-view"></div>
 
-<p>The <tt>reduce()</tt> mechanism is a bit harder to
-understand. Essentially, BrowserCouch takes all the rows generated by
+<p>Essentially, BrowserCouch takes all the rows generated by
 <tt>map()</tt> and generates a new list of key-value rows, where the
 value of each row is the list of all values that match the row's key.
 This explains what the <tt>values</tt> argument passed to
@@ -148,18 +157,15 @@ method to find the first row whose key matches (or is closest to) the
 one you provide.  For example:</p>
 
 <div class="example-code">
-function findRows(result) {
-    var rowIndex = result.findRow('Thunder');
-    displayInElement(result.rows[rowIndex], 'author-find-row-view');
-    tryMyView();
-}
+var rowIndex = authors.findRow('Thunder');
+displayInElement(authors.rows[rowIndex], 'author-find-row-view');
 </div>
 
 <p>The output for this one is:</p>
 
 <div class="example-output" id="author-find-row-view"></div>
 
-<h1>Now You Try!</h1>
+<a name="try"><h1>Try It For Yourself</h1></a>
 
 <p>If your eyes are crossed right now, no worries&mdash;most people
 take a long time to understand exactly what MapReduce is doing. That
@@ -170,19 +176,17 @@ play around with creating your own view.</p>
 tab key when you're done making changes to recompute the view.</p>
 
 <textarea class="example-code try-code">
-function tryMyView() {
-  blogDb.view({
-    map: function(doc, emit) {
-      emit(doc.author, doc.title);
-    },
-    reduce: function(keys, values) {
-      return values;
-    },
-    finished: function(result) {
-      displayInElement(result, 'try-my-view');
-    }
-  });
-}
+blogDb.view({
+  map: function(doc, emit) {
+    emit(doc.author, doc.title);
+  },
+  reduce: function(keys, values) {
+    return values;
+  },
+  finished: function(result) {
+    displayInElement(result, 'try-my-view'); DONE();
+  }
+});
 </textarea>
 
 <p>Here's the output to the above view:</p>
