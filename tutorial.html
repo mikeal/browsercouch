@@ -21,7 +21,18 @@ alternative to SQL for client-side Web Storage.</p>
 software. It currently lacks a lot of CouchDB's features that it ought
 to have, and its API is not stable at all.</p>
 
+<p>Finally, a note about the code examples in this tutorial: they're
+actually being executed in your browser, and their output is sometimes
+being displayed in this tutorial too. While this helps ensure that the
+software is working as intended and also allows for some interactive
+learning opportunities, right now it also means that some parts of the
+code examples may look a bit unusual. Furthermore, if you see any
+conspicuously blank areas in this tutorial, it could be because the
+tutorial code crashed&mdash;our apologies if this occurs.</p>
+
 <p>With that out of the way, let's get started.</p>
+
+<h1>Getting Started</h1>
 
 <p>Suppose we want to add offline support for a blog.  To get a
 database called <tt>blog-posts</tt> in BrowserCouch, you can use the
@@ -125,7 +136,7 @@ value of each row is the list of all values that match the row's key.
 This explains what the <tt>values</tt> argument passed to
 <tt>reduce()</tt> is.</p>
 
-<p>The <tt>keys</tt> argument is a list of two-tuples, the first of
+<p>The <tt>keys</tt> argument is a list of 2-tuples, the first of
 which is the key, and the second of which is the document id that
 emitted the key during the map phase.</p>
 
@@ -183,8 +194,8 @@ function tryMyView() {
 
 <p>There's features in the API that aren't covered here, so check out
 the check out the <a class="intra-wiki"
-href="index.html#js/tests.js">annotated source code for the test
-suite</a> for more sample code.</p>
+href="index.html#js/tests.js">test suite's annotated source code</a>
+for more examples.</p>
 
 <script src="js/ext/jquery.js"></script>
 <script src="js/browser-couch.js"></script>
