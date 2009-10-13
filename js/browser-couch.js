@@ -57,7 +57,8 @@ function isArray(value) {
 // "lazy-loaded" when their functionality is needed.
 
 var ModuleLoader = {
-  LIBS: {JSON: "js/ext/json2.js"},
+  LIBS: {JSON: "js/ext/json2.js",
+         UUID: "js/ext/uuid.js"},
 
   require: function ML_require(libs, cb) {
     var self = this;
