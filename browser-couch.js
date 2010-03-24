@@ -507,7 +507,7 @@ var BrowserCouch = function(opts){
   bc.get = function BC_get(name, cb, storage, options) {
     if (!storage)
       storage = new bc.LocalStorage();
-    new bc._DB(name, storage, new this._Dictionary(), cb, options);
+    new bc._DB(name, storage, cb, options);
   },
   
   bc._Dictionary = function BC__Dictionary() {
@@ -566,11 +566,14 @@ var BrowserCouch = function(opts){
 	//
 	// Instantiated for a particular database. 
 	//
-  bc._DB = function BC__DB(name, storage, dict, cb, options) {
+  bc._DB = function BC__DB(name, storage, cb, options) {
+    
     options = options || {};
+    
     var self = this,
         dbName = 'BrowserCouch_DB_' + name,
         metaName = 'BrowserCouch_Meta_' + name,
+        dict = new bc._Dictionary(),
         syncManager;
 
     if (options.sync)
@@ -584,9 +587,7 @@ var BrowserCouch = function(opts){
     }
   
     function commitToStorage(cb) {
-      if (!cb)
-        cb = function() {};
-      storage.put(dbName, dict.pickle(), cb);
+      storage.put(dbName, dict.pickle(), cb || function(){});
     }
 
     this.wipe = function DB_wipe(cb) {
