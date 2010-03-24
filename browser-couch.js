@@ -565,6 +565,16 @@ var BrowserCouch = function(opts){
     bc._DB(name, storage, cb, options, storage || new bc.LocalStorage());
   },
   
+  // == List All Databases
+  //
+  // Similar to {{{/_all_dbs}}}
+  //
+  bc.allDbs = function(){
+    return []//TODO
+  } 
+  
+  
+  
 	// == Database Wrapper Object == 
 	//
 	// Called with the database name, returns a wrapper object
@@ -587,7 +597,7 @@ var BrowserCouch = function(opts){
           });
         };
     
-    if (options.sync){
+    if (options && options.sync){
       syncManager = BrowserCouch.SyncManager(name, self, options.sync);
     }
     
