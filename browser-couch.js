@@ -504,294 +504,293 @@ var BrowserCouch = function(opts){
   // {{{BrowserCouch}}} is the main object that clients will use.  It's
   // intended to be somewhat analogous to CouchDB's RESTful API.
   
-    bc.get = function BC_get(name, cb, storage, options) {
-      if (!storage)
-        storage = new bc.LocalStorage();
+  bc.get = function BC_get(name, cb, storage, options) {
+    if (!storage)
+      storage = new bc.LocalStorage();
+    new bc._DB(name, storage, new this._Dictionary(), cb, options);
+  },
   
-      new bc._DB(name, storage, new this._Dictionary(), cb, options);
-    },
-  
-    bc._Dictionary = function BC__Dictionary() {
-      var dict = {};
-      var keys = [];
-  
-      function regenerateKeys() {
-        keys = [];
-        for (key in dict)
-          keys.push(key);
-      }
-  
-      this.has = function Dictionary_has(key) {
-        return (key in dict);
-      };
-  
-      this.getKeys = function Dictionary_getKeys() {
-        return keys;
-      };
-  
-      this.get = function Dictionary_get(key) {
-        return dict[key];
-      };
-  
-      this.set = function Dictionary_set(key, value) {
-        if (!(key in dict))
-          keys.push(key);
-        dict[key] = value;
-      };
-  
-      this.remove = function Dictionary_delete(key) {
-        delete dict[key];
-  
-        // TODO: If we're in JS 1.6 and have Array.indexOf(), we
-        // shouldn't have to rebuild the key index like this.
-        regenerateKeys();
-      };
-  
-      this.clear = function Dictionary_clear() {
-        dict = {};
-        keys = [];
-      };
-  
-      this.pickle = function Dictionary_pickle() {
-        return dict;
-      };
-  
-      this.unpickle = function Dictionary_unpickle(obj) {
-        dict = obj;
-        regenerateKeys();
-      };
+  bc._Dictionary = function BC__Dictionary() {
+    var dict = {};
+    var keys = [];
+
+    function regenerateKeys() {
+      keys = [];
+      for (key in dict)
+        keys.push(key);
     }
+
+    this.has = function Dictionary_has(key) {
+      return (key in dict);
+    };
+
+    this.getKeys = function Dictionary_getKeys() {
+      return keys;
+    };
+
+    this.get = function Dictionary_get(key) {
+      return dict[key];
+    };
+
+    this.set = function Dictionary_set(key, value) {
+      if (!(key in dict))
+        keys.push(key);
+      dict[key] = value;
+    };
+
+    this.remove = function Dictionary_delete(key) {
+      delete dict[key];
+
+      // TODO: If we're in JS 1.6 and have Array.indexOf(), we
+      // shouldn't have to rebuild the key index like this.
+      regenerateKeys();
+    };
+
+    this.clear = function Dictionary_clear() {
+      dict = {};
+      keys = [];
+    };
+
+    this.pickle = function Dictionary_pickle() {
+      return dict;
+    };
+
+    this.unpickle = function Dictionary_unpickle(obj) {
+      dict = obj;
+      regenerateKeys();
+    };
+  }
  
 
 	// == Database Object == 
 	//
 	// Instantiated for a particular database. 
 	//
-    bc._DB = function BC__DB(name, storage, dict, cb, options) {
-      options = options || {};
-      var self = this,
-          dbName = 'BrowserCouch_DB_' + name,
-          metaName = 'BrowserCouch_Meta_' + name,
-          syncManager;
+  bc._DB = function BC__DB(name, storage, dict, cb, options) {
+    options = options || {};
+    var self = this,
+        dbName = 'BrowserCouch_DB_' + name,
+        metaName = 'BrowserCouch_Meta_' + name,
+        syncManager;
+
+    if (options.sync)
+      syncManager = BrowserCouch.SyncManager(name, this, options.sync);
+
+
+
+    var addToSyncQueue = function(document){
+      if (syncManager)
+        syncManager.enqueue(document)
+    }
   
-      if (options.sync)
-        syncManager = BrowserCouch.SyncManager(name, this, options.sync);
- 
+    function commitToStorage(cb) {
+      if (!cb)
+        cb = function() {};
+      storage.put(dbName, dict.pickle(), cb);
+    }
 
+    this.wipe = function DB_wipe(cb) {
+      dict.clear();
+      commitToStorage(cb);
+    };
 
-      var addToSyncQueue = function(document){
-        if (syncManager)
-          syncManager.enqueue(document)
+    this.get = function DB_get(id, cb) {
+      if (dict.has(id))
+        cb(dict.get(id));
+      else
+        cb(null);
+    };
+    
+    // === {{{PUT}}} ===
+    //
+    // This method is vaguely isomorphic to a 
+    // [[http://wiki.apache.org/couchdb/HTTP_Document_API#PUT|HTTP PUT]] to a 
+    // url with the specified {{{id}}}.
+    //
+    // It creates or updates a document
+    this.put = function DB_put(document, cb, options) {
+      options = options || {};
+      var putObj = function(obj){
+        if (!obj._rev){
+          obj._rev = "1-" + (Math.random()*Math.pow(10,20)); 
+            // We're using the naive random versioning, rather
+            // than the md5 deterministic hash.
+        }else{
+          var iter = parseInt(obj._rev.split("-")[0]);
+          obj._rev = "" + (iter+1) +  
+            obj._rev.slice(obj._rev.indexOf("-"));
+        }
+        if(options && (!options.noSync))
+          addToSyncQueue(obj);
+        dict.set(obj.id, obj);  
       }
     
-      function commitToStorage(cb) {
-        if (!cb)
-          cb = function() {};
-        storage.put(dbName, dict.pickle(), cb);
+      if (isArray(document)) {
+        for (var i = 0; i < document.length; i++){
+          putObj(document[i]);
+        }
+      } else{
+        putObj(document);
       }
-  
-      this.wipe = function DB_wipe(cb) {
-        dict.clear();
-        commitToStorage(cb);
-      };
-  
-      this.get = function DB_get(id, cb) {
-        if (dict.has(id))
-          cb(dict.get(id));
-        else
-          cb(null);
-      };
       
-      // === {{{PUT}}} ===
-      //
-      // This method is vaguely isomorphic to a 
-      // [[http://wiki.apache.org/couchdb/HTTP_Document_API#PUT|HTTP PUT]] to a 
-      // url with the specified {{{id}}}.
-      //
-      // It creates or updates a document
-      this.put = function DB_put(document, cb, options) {
-        options = options || {};
-        var putObj = function(obj){
-          if (!obj._rev){
-            obj._rev = "1-" + (Math.random()*Math.pow(10,20)); 
-              // We're using the naive random versioning, rather
-              // than the md5 deterministic hash.
-          }else{
-            var iter = parseInt(obj._rev.split("-")[0]);
-            obj._rev = "" + (iter+1) +  
-              obj._rev.slice(obj._rev.indexOf("-"));
-          }
-          if(options && (!options.noSync))
-            addToSyncQueue(obj);
-          dict.set(obj.id, obj);  
-        }
-      
-        if (isArray(document)) {
-          for (var i = 0; i < document.length; i++){
-            putObj(document[i]);
-          }
-        } else{
-          putObj(document);
-        }
-        
-        commitToStorage(cb);
-      };
-      
+      commitToStorage(cb);
+    };
+    
 
-  
-      // === {{{POST}}} ===
-      // 
-      // Roughly isomorphic to the two POST options
-      // available in the REST interface. If an ID is present,
-      // then the functionality is the same as a PUT operation,
-      // however if there is no ID, then one will be created.
-      //
-      this.post =function(data, cb, options){
-        var _t = this
-        if (!data.id)
-          bc.ModuleLoader.require('UUID', function(){
-            data.id = new UUID().createUUID();
-            _t.put(data, function(){cb(data.id)}, options);
-          });
-        else{  
-          _t.put(data, function(){cb(data.id)}, options)
-        }
-      }
- 
-      this.del = function(doc, cb){
-	    this.put({_id : doc._id, _rev : doc._rev, _deleted : true}, cb);
-	  }
 
-      this.getLength = function DB_getLength() {
-        return dict.getKeys().length;
-      };
-  
-      this.view = function DB_view(options) {
-        if (!options.map)
-          throw new Error('map function not provided');
-        if (!options.finished)
-          throw new Error('finished callback not provided');
-  
-        // Maximum number of items to process before giving the UI a chance
-        // to breathe.
-        var DEFAULT_CHUNK_SIZE = 1000;
-  
-        // If no progress callback is given, we'll automatically give the
-        // UI a chance to breathe for this many milliseconds before continuing
-        // processing.
-        var DEFAULT_UI_BREATHE_TIME = 50;
-  
-        var chunkSize = options.chunkSize;
-        if (!chunkSize)
-          chunkSize = DEFAULT_CHUNK_SIZE;
-  
-        var progress = options.progress;
-        if (!progress)
-          progress = function defaultProgress(phase, percent, resume) {
-            window.setTimeout(resume, DEFAULT_UI_BREATHE_TIME);
-          };
-  
-        var mapReducer = options.mapReducer;
-        if (!mapReducer)
-          mapReducer = bc.SingleThreadedMapReducer;
-  
-        mapReducer.map(
-          options.map,
-          dict,
-          progress,
-          chunkSize,
-          function(mapResult) {
-            if (options.reduce)
-              mapReducer.reduce(
-                options.reduce,
-                mapResult,
-                progress,
-                chunkSize,
-                function(rows) {
-                  options.finished(new BrowserCouch._View(rows));
-                });
-            else
-              options.finished(new BrowserCouch._MapView(mapResult));
-          });
-      };
-  
-      storage.get(
-        dbName,
-        function(obj) {
-          if (obj)
-            dict.unpickle(obj);
-          cb(self);
+    // === {{{POST}}} ===
+    // 
+    // Roughly isomorphic to the two POST options
+    // available in the REST interface. If an ID is present,
+    // then the functionality is the same as a PUT operation,
+    // however if there is no ID, then one will be created.
+    //
+    this.post =function(data, cb, options){
+      var _t = this
+      if (!data.id)
+        bc.ModuleLoader.require('UUID', function(){
+          data.id = new UUID().createUUID();
+          _t.put(data, function(){cb(data.id)}, options);
         });
+      else{  
+        _t.put(data, function(){cb(data.id)}, options)
+      }
     }
-  
-    bc._View = function BC__View(rows) {
-      this.rows = rows;
-  
-      function findRow(key, rows) {
-        if (rows.length > 1) {
-          var midpoint = Math.floor(rows.length / 2);
-          var row = rows[midpoint];
-          if (key < row.key)
-            return findRow(key, rows.slice(0, midpoint));
-          if (key > row.key)
-            return midpoint + findRow(key, rows.slice(midpoint));
-          return midpoint;
-        } else
-          return 0;
-      }
-  
-      this.findRow = function V_findRow(key) {
-        return findRow(key, rows);
-      };
-    },
-  
-    bc._MapView = function BC__MapView(mapResult) {
-      var rows = [];
-      var keyRows = [];
-  
-      var mapKeys = mapResult.keys;
-      var mapDict = mapResult.dict;
-  
-      for (var i = 0; i < mapKeys.length; i++) {
-        var key = mapKeys[i];
-        var item = mapDict[key];
-        keyRows.push({key: key, pos: rows.length});
-        var newRows = [];
-        for (var j = 0; j < item.keys.length; j++) {
-          var id = item.keys[j];
-          var value = item.values[j];
-          newRows.push({id: id,
-                        key: key,
-                        value: value});
-        }
-        newRows.sort(function(a, b) {
-                       if (a.id < b.id)
-                         return -1;
-                       if (a.id > b.id)
-                         return 1;
-                       return 0;
-                     });
-        rows = rows.concat(newRows);
-      }
-  
-      function findRow(key, keyRows) {
-        if (keyRows.length > 1) {
-          var midpoint = Math.floor(keyRows.length / 2);
-          var keyRow = keyRows[midpoint];
-          if (key < keyRow.key)
-            return findRow(key, keyRows.slice(0, midpoint));
-          if (key > keyRow.key)
-            return findRow(key, keyRows.slice(midpoint));
-          return keyRow.pos;
-        } else
-          return keyRows[0].pos;
-      }
-  
-      this.rows = rows;
-      this.findRow = function MV_findRow(key) {
-        return findRow(key, keyRows);
-      };
+
+    this.del = function(doc, cb){
+    this.put({_id : doc._id, _rev : doc._rev, _deleted : true}, cb);
+  }
+
+    this.getLength = function DB_getLength() {
+      return dict.getKeys().length;
+    };
+
+    this.view = function DB_view(options) {
+      if (!options.map)
+        throw new Error('map function not provided');
+      if (!options.finished)
+        throw new Error('finished callback not provided');
+
+      // Maximum number of items to process before giving the UI a chance
+      // to breathe.
+      var DEFAULT_CHUNK_SIZE = 1000;
+
+      // If no progress callback is given, we'll automatically give the
+      // UI a chance to breathe for this many milliseconds before continuing
+      // processing.
+      var DEFAULT_UI_BREATHE_TIME = 50;
+
+      var chunkSize = options.chunkSize;
+      if (!chunkSize)
+        chunkSize = DEFAULT_CHUNK_SIZE;
+
+      var progress = options.progress;
+      if (!progress)
+        progress = function defaultProgress(phase, percent, resume) {
+          window.setTimeout(resume, DEFAULT_UI_BREATHE_TIME);
+        };
+
+      var mapReducer = options.mapReducer;
+      if (!mapReducer)
+        mapReducer = bc.SingleThreadedMapReducer;
+
+      mapReducer.map(
+        options.map,
+        dict,
+        progress,
+        chunkSize,
+        function(mapResult) {
+          if (options.reduce)
+            mapReducer.reduce(
+              options.reduce,
+              mapResult,
+              progress,
+              chunkSize,
+              function(rows) {
+                options.finished(new BrowserCouch._View(rows));
+              });
+          else
+            options.finished(new BrowserCouch._MapView(mapResult));
+        });
+    };
+
+    storage.get(
+      dbName,
+      function(obj) {
+        if (obj)
+          dict.unpickle(obj);
+        cb(self);
+      });
+  }
+
+  bc._View = function BC__View(rows) {
+    this.rows = rows;
+
+    function findRow(key, rows) {
+      if (rows.length > 1) {
+        var midpoint = Math.floor(rows.length / 2);
+        var row = rows[midpoint];
+        if (key < row.key)
+          return findRow(key, rows.slice(0, midpoint));
+        if (key > row.key)
+          return midpoint + findRow(key, rows.slice(midpoint));
+        return midpoint;
+      } else
+        return 0;
     }
+
+    this.findRow = function V_findRow(key) {
+      return findRow(key, rows);
+    };
+  },
+
+  bc._MapView = function BC__MapView(mapResult) {
+    var rows = [];
+    var keyRows = [];
+
+    var mapKeys = mapResult.keys;
+    var mapDict = mapResult.dict;
+
+    for (var i = 0; i < mapKeys.length; i++) {
+      var key = mapKeys[i];
+      var item = mapDict[key];
+      keyRows.push({key: key, pos: rows.length});
+      var newRows = [];
+      for (var j = 0; j < item.keys.length; j++) {
+        var id = item.keys[j];
+        var value = item.values[j];
+        newRows.push({id: id,
+                      key: key,
+                      value: value});
+      }
+      newRows.sort(function(a, b) {
+                     if (a.id < b.id)
+                       return -1;
+                     if (a.id > b.id)
+                       return 1;
+                     return 0;
+                   });
+      rows = rows.concat(newRows);
+    }
+
+    function findRow(key, keyRows) {
+      if (keyRows.length > 1) {
+        var midpoint = Math.floor(keyRows.length / 2);
+        var keyRow = keyRows[midpoint];
+        if (key < keyRow.key)
+          return findRow(key, keyRows.slice(0, midpoint));
+        if (key > keyRow.key)
+          return findRow(key, keyRows.slice(midpoint));
+        return keyRow.pos;
+      } else
+        return keyRows[0].pos;
+    }
+
+    this.rows = rows;
+    this.findRow = function MV_findRow(key) {
+      return findRow(key, keyRows);
+    };
+  }
   
   return bc
 }();  
