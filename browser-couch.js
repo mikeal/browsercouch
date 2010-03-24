@@ -68,9 +68,9 @@ var BrowserCouch = function(opts){
            UUID: "js/ext/uuid.js"},
   
     require: function ML_require(libs, cb) {
-      var self = this;
-      var i = 0;
-      var lastLib = "";
+      var self = this,
+          i = 0,
+          lastLib = "";
   
       if (!isArray(libs)){
         libs = [libs];
@@ -498,8 +498,10 @@ var BrowserCouch = function(opts){
         sync = function(){
       
           // ==== Get Changes ====
-          // We ping the {{{_all_docs_by_seq}}} endpoint to get the most
-          // recent documents. Ultimately we'll want to page this.
+          // We poll the {{{_changes}}} endpoint to get the most
+          // recent documents. At the moment, we're not storing the
+          // sequence numbers for each server, however this is on 
+          // the TODO list.
   
           var url = options.server + name + "/_changes";
           $.getJSON(url, {since : db.seq}, function(data){
@@ -561,11 +563,17 @@ var BrowserCouch = function(opts){
   // {{{BrowserCouch}}} is the main object that clients will use.  It's
   // intended to be somewhat analogous to CouchDB's RESTful API.
   
+  
+  // === //Get Database// ===
+  //
+  // Returns a wrapper to the database that emulates the HTTP methods
+  // available to /<database>/
+  //
   bc.get = function BC_get(name, cb, storage, options) {
     bc._DB(name, storage, cb, options, storage || new bc.LocalStorage());
   },
   
-  // == List All Databases
+  // === //List All Databases// ===
   //
   // Similar to {{{/_all_dbs}}}
   //
@@ -679,14 +687,37 @@ var BrowserCouch = function(opts){
         }
       }
   
+      // === {{{DELETE}}} ===
+      //
+      // Delete the document. 
       self.del = function(doc, cb){
         this.put({_id : doc._id, _rev : doc._rev, _deleted : true}, cb);
       }
   
+      // 
       self.getLength = function DB_getLength() {
         return dict.getKeys().length;
       };
   
+      // === View ===
+      //
+      // Perform a query on the data. Queries are in the form of
+      // map-reduce functions.
+      //
+      // takes object of options:
+      //
+      // * {{{options.map}}} : The map function to be applied to each document
+      //                       (REQUIRED)
+      //
+      // * {{{options.finished}}} : A callback for the result.
+      //                           (REQUIRED)
+      //
+      // * {{{options.chunkSize}}}
+      // * {{{options.progress}}} : A callback to indicate progress of a query
+      // * {{{options.mapReducer}}} : A Map-Reduce engine, by default uses a 
+      //                              single thread
+      // * {{{options.reduce}}} : The reduce function 
+      
       self.view = function DB_view(options) {
         if (!options.map)
           throw new Error('map function not provided');
@@ -751,6 +782,8 @@ var BrowserCouch = function(opts){
     return self
   }
 
+
+  // == View ==
   bc._View = function BC__View(rows) {
     this.rows = rows;
 
@@ -772,6 +805,7 @@ var BrowserCouch = function(opts){
     };
   },
 
+  // == MapView ==
   bc._MapView = function BC__MapView(mapResult) {
     var rows = [];
     var keyRows = [];
