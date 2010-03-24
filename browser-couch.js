@@ -496,13 +496,13 @@ var BrowserCouch = function(opts){
           // We ping the {{{_all_docs_by_seq}}} endpoint to get the most
           // recent documents. Ultimately we'll want to page this.
   
-          var url = options.server + name + "/_all_docs_by_seq";
+          var url = options.server + name + "/_changes";
           $.getJSON(url, {}, function(data){
   
-            if (data && data.rows){
+            if (data && data.results){
               // TODO, screw it, for now we'll assume the servers right
-              for (var d in data.rows){
-                getRemoteDoc(data.rows[d], function(doc){
+              for (var d in data.results){
+                getRemoteDoc(data.results[d], function(doc){
                   doc.id = doc["_id"];
                   console.log(doc);
                   db.put(doc, function(){}, {noSync:true});
@@ -569,24 +569,26 @@ var BrowserCouch = function(opts){
         dbName = 'BrowserCouch_DB_' + name,
         metaName = 'BrowserCouch_Meta_' + name,
         dict = new bc._Dictionary(),
-        syncManager;
-
+        syncManager, 
+        
+        addToSyncQueue = function(document){
+          if (syncManager)
+            syncManager.enqueue(document)
+        },
+        
+        commitToStorage = function (cb) {
+          storage.put(dbName, dict.pickle(), function(){
+            storage.put(metaName, {seq : self.seq}, cb || function(){})
+          });
+        };
+    
     if (options.sync){
       syncManager = BrowserCouch.SyncManager(name, self, options.sync);
     }
     
-    var addToSyncQueue = function(document){
-      if (syncManager)
-        syncManager.enqueue(document)
-    }
-    
-    function commitToStorage(cb) {
-      storage.put(dbName, dict.pickle(), cb || function(){});
-    }
-    
     storage.get(metaName, function(meta){
-      if (meta)
-        self.seq = meta.seq || 0;
+      meta = meta || {};
+      self.seq = meta.seq || 0;
       
       self.wipe = function DB_wipe(cb) {
         dict.clear();
