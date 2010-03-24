@@ -258,7 +258,7 @@ var BrowserCouch = function(opts){
         if (!item){
           item = mapDict[key] = {keys: [], values: []};
         }
-        item.keys.push(currDoc.id);
+        item.keys.push(currDoc._id);
         item.values.push(value);
       }
   
@@ -491,7 +491,7 @@ var BrowserCouch = function(opts){
                     // running periodically   
         
         getRemoteDoc = function(doc, callback){
-          var url = options.server + name + "/" + doc.id;
+          var url = options.server + name + "/" + doc._id;
           $.getJSON(url, {}, callback || function(){});
         }
         
@@ -508,7 +508,7 @@ var BrowserCouch = function(opts){
               // TODO, screw it, for now we'll assume the servers right
               for (var d in data.results){
                 getRemoteDoc(data.results[d], function(doc){
-                  doc.id = doc["_id"];
+                  doc._id = doc["_id"];
                   console.log(doc);
                   db.put(doc, function(){}, {noSync:true});
                   if (options.updateCallback)
@@ -525,7 +525,7 @@ var BrowserCouch = function(opts){
           // now, just iterate through the queue with a req for each
   
           for(var x = queue.pop(); x; x = queue.pop()){
-              var url = "" + name + "/" + x.id;  
+              var url = "" + name + "/" + x._id;  
               console.log("" + options.server + url, JSON.stringify(x));
               $.ajax({
                 url : "" + options.server + url, 
@@ -640,7 +640,7 @@ var BrowserCouch = function(opts){
           }
           if(options && (!options.noSync))
             addToSyncQueue(obj);
-          dict.set(obj.id, obj);
+          dict.set(obj._id, obj);
           
           //If new object 
           self.seq +=1;
@@ -669,13 +669,13 @@ var BrowserCouch = function(opts){
       //
       self.post =function(data, cb, options){
         var _t = this
-        if (!data.id)
+        if (!data._id)
           bc.ModuleLoader.require('UUID', function(){
-            data.id = new UUID().createUUID();
-            _t.put(data, function(){cb(data.id)}, options);
+            data._id = new UUID().createUUID();
+            _t.put(data, function(){cb(data._id)}, options);
           });
         else{  
-          _t.put(data, function(){cb(data.id)}, options)
+          _t.put(data, function(){cb(data._id)}, options)
         }
       }
   
@@ -787,14 +787,14 @@ var BrowserCouch = function(opts){
       for (var j = 0; j < item.keys.length; j++) {
         var id = item.keys[j];
         var value = item.values[j];
-        newRows.push({id: id,
+        newRows.push({_id: id,
                       key: key,
                       value: value});
       }
       newRows.sort(function(a, b) {
-                     if (a.id < b.id)
+                     if (a._id < b._id)
                        return -1;
-                     if (a.id > b.id)
+                     if (a._id > b._id)
                        return 1;
                      return 0;
                    });

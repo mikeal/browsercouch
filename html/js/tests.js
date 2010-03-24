@@ -139,9 +139,9 @@ var Tests = {
       new BrowserCouch.FakeStorage()
     );
   },
-  _testDbContents: [{id: "monkey",
+  _testDbContents: [{_id: "monkey",
                      content: "hello there dude"},
-                    {id: "chunky",
+                    {_id: "chunky",
                      content: "hello there dogen"}],
   _mapWordFrequencies: function(doc, emit) {
     var words = doc.content.split(" ");
@@ -162,12 +162,12 @@ var Tests = {
           {map: map,
            finished: function(result) {
              var expected = {
-               rows:[{"id":"chunky","key":"dogen","value":1},
-                     {"id":"monkey","key":"dude","value":1},
-                     {"id":"chunky","key":"hello","value":1},
-                     {"id":"monkey","key":"hello","value":1},
-                     {"id":"chunky","key":"there","value":1},
-                     {"id":"monkey","key":"there","value":1}]
+               rows:[{"_id":"chunky","key":"dogen","value":1},
+                     {"_id":"monkey","key":"dude","value":1},
+                     {"_id":"chunky","key":"hello","value":1},
+                     {"_id":"monkey","key":"hello","value":1},
+                     {"_id":"chunky","key":"there","value":1},
+                     {"_id":"monkey","key":"there","value":1}]
              };
              self.assertEqual(JSON.stringify(expected),
                               JSON.stringify(result));
