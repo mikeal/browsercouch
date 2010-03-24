@@ -3,10 +3,5 @@
 CouchDB in the browser - persistant, syncing client side storage.
  
  
- == TODO ==
- 
- - Store sequence ID and use for syncing - need another database
- - Switch id to _id
- - Cache storage 
  
 
