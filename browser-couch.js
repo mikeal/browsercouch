@@ -420,7 +420,7 @@ var BrowserCouch = function(opts){
                               (this.globalStorage || this.localStorage));
   
   
-  // == Dictionary ==
+  // === {{{Dictionary}}} ===
   //
   // A wrapper for a map-like data structure.  
   //
@@ -476,7 +476,7 @@ var BrowserCouch = function(opts){
   }
 
   
-  // == SyncManager ==
+  // == {{{SyncManager}}} ==
   //
   // {{{SyncManager}}} syncs the local storage with a remote couchdb server
   // when possible. This introduces the possibility for conflicts, thus
@@ -497,7 +497,7 @@ var BrowserCouch = function(opts){
         
         sync = function(){
       
-          // === Get Changes ===
+          // ==== Get Changes ====
           // We ping the {{{_all_docs_by_seq}}} endpoint to get the most
           // recent documents. Ultimately we'll want to page this.
   
@@ -520,7 +520,7 @@ var BrowserCouch = function(opts){
            }
         });
   
-          // === Send Changes ===
+          // ==== Send Changes ====
           // We'll ultimately use the bulk update methods, but for
           // now, just iterate through the queue with a req for each
   
