@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+  		<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+  		<link rel="stylesheet" type="text/css" media="all"
+        href="css/index.css" />
+        <style type='text/css'>
+table, tr, th, td{border: 1px solid #000;}
+        
+        </style>
+  		<title>Serialization</title>
+		<script src="js/ext/jquery.js"></script>
+		<script src="../js/browser-couch.js"></script>
+		<script type='text/javascript'>
+$(function(){
+	var storage = new BrowserCouch.LocalStorage(), update = function(){};
+	
+	var tabulate = function(doc){
+		var t = $("<table />");
+		for (var k in doc){
+			t.append("<tr><th>" + k + "</th><td>" + JSON.stringify(doc[k]) + "</td></tr");
+		}
+		return t;	
+	}
+	
+	BrowserCouch.get("browser-couch",
+		function(db){
+			update = function(){
+				db.view({
+					finished: function(x){
+						$("#out").html("");
+						var rows = x.rows;
+						for (var y in rows){
+							var kv = tabulate(rows[y]);
+							$("#out").append($("<tr> /").append($("<th>" + y + "</th>")).append($("<td />").append(kv)));	
+						}
+					},
+					map : function(doc, emit){
+						if(doc){
+							emit(doc.id, doc);
+						}
+					}
+				})
+			};
+
+			$("#add").click(function(){
+				val = $("#val").val();
+				if (val){
+					db.post({val:JSON.parse(val)}, function(){update()});
+				}
+				return false;
+			});
+			
+			update();
+		},
+		storage,
+		{sync:{server:"http://localhost:5984/",
+			updateCallback : function(){
+				update();
+			}
+		}
+	});
+});		
+		</script>
+	</head>
+	<body>
+		<h1>Serialization</h1>
+		<form action ="#">
+			<input id = 'val' />
+			<a href ="#" id='add'>Add</a>
+		</form>
+
+		<table id='out'>
+		</table>
+	</body>
+</html>

@@ -128,7 +128,7 @@ var Tests = {
             db.put(
               documents,
               function() {
-                ModuleLoader.require(
+                BrowserCouch.ModuleLoader.require(
                   "JSON",
                   function() { cb(db); }
                 );
@@ -136,7 +136,7 @@ var Tests = {
             );
           });
       },
-      new FakeStorage()
+      new BrowserCouch.FakeStorage()
     );
   },
   _testDbContents: [{id: "monkey",
@@ -240,7 +240,7 @@ var Tests = {
           db.view(
             {map: map,
              reduce: reduce,
-             mapReducer: new WebWorkerMapReducer(2),
+             mapReducer: new BrowserCouch.WebWorkerMapReducer(2),
              chunkSize: 1,
              finished: function(result) {
                var expected = {rows: [{key: "dogen", value: 1},
@@ -275,11 +275,11 @@ var Tests = {
       });
   },
   testLocalStorage_async: function(self) {
-    if (LocalStorage.isAvailable) {
-      ModuleLoader.require(
+    if (BrowserCouch.LocalStorage.isAvailable) {
+      BrowserCouch.ModuleLoader.require(
         "JSON",
         function() {
-          var storage = new LocalStorage(JSON);
+          var storage = new BrowserCouch.LocalStorage(JSON);
           var name = "BrowserCouch_test_DB";
 
           var data = {test: "hi",
