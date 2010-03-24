@@ -426,7 +426,7 @@ var BrowserCouch = function(opts){
   // we need a callback should a conflict occurr 
   //
   
-  bc.SyncManager = function(database, db, options){
+  bc.SyncManager = function(name, db, options){
     var queue = [], // An queue of updated documents waiting to be
                     // synced back to the servers
         
@@ -434,7 +434,7 @@ var BrowserCouch = function(opts){
                     // running periodically   
         
         getRemoteDoc = function(doc, callback){
-          var url = options.server + database + "/" + doc.id;
+          var url = options.server + name + "/" + doc.id;
           $.getJSON(url, {}, callback || function(){});
         }
         
@@ -444,7 +444,7 @@ var BrowserCouch = function(opts){
           // We ping the {{{_all_docs_by_seq}}} endpoint to get the most
           // recent documents. Ultimately we'll want to page this.
   
-          var url = options.server + database + "/_all_docs_by_seq";
+          var url = options.server + name + "/_all_docs_by_seq";
           $.getJSON(url, {}, function(data){
   
             if (data && data.rows){
@@ -468,7 +468,7 @@ var BrowserCouch = function(opts){
           // now, just iterate through the queue with a req for each
   
           for(var x = queue.pop(); x; x = queue.pop()){
-              var url = "" + database + "/" + x.id;  
+              var url = "" + name + "/" + x.id;  
               console.log("" + options.server + url, JSON.stringify(x));
               $.ajax({
                 url : "" + options.server + url, 
@@ -561,16 +561,24 @@ var BrowserCouch = function(opts){
         regenerateKeys();
       };
     }
-  
+ 
+
+	// == Database Object == 
+	//
+	// Instantiated for a particular database. 
+	//
     bc._DB = function BC__DB(name, storage, dict, cb, options) {
       options = options || {};
       var self = this,
           dbName = 'BrowserCouch_DB_' + name,
+          metaName = 'BrowserCouch_Meta_' + name,
           syncManager;
   
       if (options.sync)
         syncManager = BrowserCouch.SyncManager(name, this, options.sync);
-  
+ 
+
+
       var addToSyncQueue = function(document){
         if (syncManager)
           syncManager.enqueue(document)
@@ -649,7 +657,11 @@ var BrowserCouch = function(opts){
           _t.put(data, function(){cb(data.id)}, options)
         }
       }
-  
+ 
+      this.del = function(doc, cb){
+	    this.put({_id : doc._id, _rev : doc._rev, _deleted : true}, cb);
+	  }
+
       this.getLength = function DB_getLength() {
         return dict.getKeys().length;
       };
