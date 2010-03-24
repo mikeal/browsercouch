@@ -419,6 +419,11 @@ var BrowserCouch = function(opts){
                               this.location.protocol != "file:" &&
                               (this.globalStorage || this.localStorage));
   
+  
+  // == Dictionary ==
+  //
+  // A wrapper for a map-like data structure.  
+  //
   bc._Dictionary = function BC__Dictionary() {
     var dict = {};
     var keys = [];
@@ -497,7 +502,7 @@ var BrowserCouch = function(opts){
           // recent documents. Ultimately we'll want to page this.
   
           var url = options.server + name + "/_changes";
-          $.getJSON(url, {}, function(data){
+          $.getJSON(url, {since : db.seq}, function(data){
   
             if (data && data.results){
               // TODO, screw it, for now we'll assume the servers right
@@ -587,6 +592,8 @@ var BrowserCouch = function(opts){
     }
     
     storage.get(metaName, function(meta){
+      // Load meta-data before setting up database object
+      
       meta = meta || {};
       self.seq = meta.seq || 0;
       
@@ -623,7 +630,11 @@ var BrowserCouch = function(opts){
           }
           if(options && (!options.noSync))
             addToSyncQueue(obj);
-          dict.set(obj.id, obj);  
+          dict.set(obj.id, obj);
+          
+          //If new object 
+          self.seq +=1;
+            
         }
       
         if (isArray(document)) {
