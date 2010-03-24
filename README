@@ -1,27 +1,12 @@
-Browser-Couch. 
+ === BrowserCouch === 
  
 CouchDB in the browser - persistant, syncing client side storage.
  
- == REQUIRES ==
  
-To run the syncing examples out of couchdb you'll need to install
-couchapp [http://github.com/couchapp/couchapp]
+ == TODO ==
  
- == RUNNING == 
- 
-From couchapp directory
-> couchapp push http://localhost:5984/browsercouch
- 
- 
- 
- 
- 
-TODO:
- 
- -- 
  - Store sequence ID and use for syncing - need another database
  - Switch id to _id
- - 
  - Cache storage 
  
 
