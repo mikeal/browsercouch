@@ -56,9 +56,6 @@ var BrowserCouch = function(opts){
     return Object.prototype.toString.call(value) === "[object Array]";
   }
  
-  var ensureLoaded = function (lib, cb){
-	  bc.ModuleLoader.require(lib, cb)
-  }		  
 
   
   // === {{{ModuleLoader}}} ===
@@ -400,7 +397,7 @@ var BrowserCouch = function(opts){
       
     this.get = function LS_get(name, cb) {
       if (name in storage && storage[name].value)
-        ensureLoaded('JSON',
+        bc.ModuleLoader.require('JSON',
           function() {
             var obj = JSON.parse(storage[name].value);
             cb(obj);
@@ -410,7 +407,7 @@ var BrowserCouch = function(opts){
     };
   
     this.put = function LS_put(name, obj, cb) {
-      ensureLoaded('JSON',
+      bc.ModuleLoader.require('JSON',
         function() {
           storage[name] = JSON.stringify(obj);
           cb();
@@ -644,7 +641,7 @@ var BrowserCouch = function(opts){
       this.post =function(data, cb, options){
         var _t = this
         if (!data.id)
-          ensureLoaded('UUID', function(){
+          bc.ModuleLoader.require('UUID', function(){
             data.id = new UUID().createUUID();
             _t.put(data, function(){cb(data.id)}, options);
           });
