@@ -55,7 +55,7 @@ $(function(){
 			update();
 		},
 		storage,
-		{sync:{servers:["http://localhost:5984/"],
+		{sync:{servers:["http://localhost:5984/foo", "http://localhost:5984/bar"],
 			updateCallback : function(){
 				update();
 			}

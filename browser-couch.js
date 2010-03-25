@@ -495,7 +495,7 @@ var BrowserCouch = function(opts){
         sync = function(){
           $.each(options.servers, function(){
             getRemoteDoc = function(doc, callback){
-              var url = server + name + "/" + doc.id;
+              var url = server + "/" + doc.id;
               $.getJSON(url, {}, callback || function(){});
             }
             var server = this;
@@ -505,7 +505,7 @@ var BrowserCouch = function(opts){
             // sequence numbers for each server, however this is on 
             // the TODO list.
     
-            var url = server  + name + "/_changes";
+            var url = server + "/_changes";
             $.getJSON(url, {since : db.seq}, function(data){
               console.log(data);
               if (data && data.results){
@@ -513,7 +513,7 @@ var BrowserCouch = function(opts){
                 for (var d in data.results){
                   getRemoteDoc(data.results[d], function(doc){
                     console.log(doc);
-                    db.put(doc, function(){}, {noSync:true});
+                    db.put(doc, function(){});
                     if (options.updateCallback)
                       options.updateCallback();
                   })
@@ -528,7 +528,7 @@ var BrowserCouch = function(opts){
           // now, just iterate through the queue with a req for each
           
           for(var x = queue.pop(); x; x = queue.pop()){
-            var url = "" + name + "/" + x._id;  
+            var url = "/" + x._id;  
             console.log("" + server + url, JSON.stringify(x));
             
             $.ajax({
