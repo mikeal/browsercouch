@@ -490,60 +490,62 @@ var BrowserCouch = function(opts){
         interval,   // For now we'll just have a sync interval
                     // running periodically   
         
-        getRemoteDoc = function(doc, callback){
-          var url = options.server + name + "/" + doc._id;
-          $.getJSON(url, {}, callback || function(){});
-        }
+
         
         sync = function(){
-      
-          // ==== Get Changes ====
-          // We poll the {{{_changes}}} endpoint to get the most
-          // recent documents. At the moment, we're not storing the
-          // sequence numbers for each server, however this is on 
-          // the TODO list.
-  
-          var url = options.server + name + "/_changes";
-          $.getJSON(url, {since : db.seq}, function(data){
-  
-            if (data && data.results){
-              // TODO, screw it, for now we'll assume the servers right
-              for (var d in data.results){
-                getRemoteDoc(data.results[d], function(doc){
-                  doc._id = doc["_id"];
-                  console.log(doc);
-                  db.put(doc, function(){}, {noSync:true});
-                  if (options.updateCallback)
-                    options.updateCallback();
-                })
-              }
-              
-              
-           }
-        });
+          $.each(options.servers, function(){
+            getRemoteDoc = function(doc, callback){
+              var url = server + name + "/" + doc.id;
+              $.getJSON(url, {}, callback || function(){});
+            }
+            var server = this;
+            // ==== Get Changes ====
+            // We poll the {{{_changes}}} endpoint to get the most
+            // recent documents. At the moment, we're not storing the
+            // sequence numbers for each server, however this is on 
+            // the TODO list.
+    
+            var url = server  + name + "/_changes";
+            $.getJSON(url, {since : db.seq}, function(data){
+              console.log(data);
+              if (data && data.results){
+                // TODO, screw it, for now we'll assume the servers right
+                for (var d in data.results){
+                  getRemoteDoc(data.results[d], function(doc){
+                    console.log(doc);
+                    db.put(doc, function(){}, {noSync:true});
+                    if (options.updateCallback)
+                      options.updateCallback();
+                  })
+                }
+                
+                
+             }
+          });
   
           // ==== Send Changes ====
           // We'll ultimately use the bulk update methods, but for
           // now, just iterate through the queue with a req for each
-  
+          
           for(var x = queue.pop(); x; x = queue.pop()){
-              var url = "" + name + "/" + x._id;  
-              console.log("" + options.server + url, JSON.stringify(x));
-              $.ajax({
-                url : "" + options.server + url, 
-                data : JSON.stringify(x),
-                type : 'PUT',
-                processData : false,
-                contentType : 'application/json',
-                complete: function(data){
-                  console.log(data);
-                }
-              });
-            }
-        }
+            var url = "" + name + "/" + x._id;  
+            console.log("" + server + url, JSON.stringify(x));
+            
+            $.ajax({
+              url : "" + server + url, 
+              data : JSON.stringify(x),
+              type : 'PUT',
+              processData : false,
+              contentType : 'application/json',
+              complete: function(data){
+                console.log(data);
+              }
+            });
+          } 
+        }); 
+      }
   
-  
-    interval = setInterval(sync, 5000);
+    interval = setInterval(sync, options.interval || 5000);
    
     return {
       stopSync : function(){
