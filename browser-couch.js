@@ -492,11 +492,17 @@ var BrowserCouch = function(opts){
         
 		
         // === Server Setup ===
+        // There's 3 possibilities here. We could be syncing with 
+        // another browsercouch on this page, we could be talking
+        // to a CouchDB server on this domain, or we could be
+        // talking to a remote server via a shim.  
+        //
         // Because of the javascript cross domain limitations, we
         // can only use the REST interface on a CouchDB server on 
         // the same domain. TODO: We can use a shim js file, hosted
         // as a design document in the remote database to get
         // around this.
+        
         
         remoteDatabase = function(url){   
           var rs = {
