@@ -655,7 +655,7 @@ var BrowserCouch = function(opts){
       if (!dburls) {
         return syncManager.sync();
       } else {
-        return BrowserCouch.SyncManager(name, self, {sync:servers:dburls});
+        return BrowserCouch.SyncManager(name, self, {sync:{servers:dburls}});
       }
     }
     
