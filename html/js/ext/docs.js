@@ -19,6 +19,7 @@
  *
  * Contributor(s):
  *   Atul Varma <atul@mozilla.com>
+ *   Sander Dijkhuis <sander.dijkhuis@gmail.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -34,153 +35,17 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-// == Code Illuminated Source Documentation ==
+// = App =
 //
-// Everything is contained in the {{{App}}} namespace.
+// This is the application that processes the code and lets the user
+// navigate through and read the documentation.
 
 var App = {
 };
 
-// ** {{{ App.TrivialParser }}} **
-//
-// This is a trivial parser implementation, which can be used for any file
-// that the application doesn't know how to properly parse and render. It just
-// outputs the full contents of the file as the code, and the documentation
-// states that there's no documentation for the file.
-
-App.TrivialParser = function TrivialParser(pattern) {
-  this.pattern = pattern;
-};
-
-App.TrivialParser.prototype = {
-  // ** {{{ App.TrivialParser.blockify() }}} **
-  //
-  // Given a string containing the contents of a file, chops the file
-  // up into an array of segments containing documentation-code pairs.
-
-  blockify: function TrivialParser_blockify(code) {
-    return [{text: "No documentation exists for this file.",
-             lineno: 0,
-             numLines: 0,
-             code: code}];
-  },
-
-  // ** {{{ App.TrivialParser.renderDocText() }}} **
-  //
-  // Given a jQuery and a string containing documentation text, renders
-  // the documentation into the jQuery.
-
-  renderDocText: function TrivialParser_renderDocText(jQuery, text) {
-    jQuery.text(text);
-  },
-
-  // ** {{{ App.TrivialParser.renderCode() }}} **
-  //
-  // Given a jQuery and a string containing code, renders the code
-  // into the jQuery.
-
-  renderCode: function TrivialParser_renderCode(jQuery, code) {
-    jQuery.text(code);
-  }
-};
-
-// ** {{{ App.JsParser }}} **
-//
-// This is a parser implementation for parsing and rendering JavaScript with
-// [[http://wikicreole.org/|WikiCreole]] formatted comments as documentation.
-
-App.JsParser = function JsParser(creole) {
-  if (creole)
-    this._creole = creole;
-};
-
-App.JsParser.prototype = {
-  pattern: /.*\.js$/,
-  blockify: function JsParser_blockify(code) {
-    var lines = code.split('\n');
-    var blocks = [];
-    var blockText = "";
-    var codeText = "";
-    var firstCommentLine;
-    var lastCommentLine;
-
-    function maybeAppendBlock() {
-      if (blockText)
-        blocks.push({text: blockText,
-                     lineno: firstCommentLine,
-                     numLines: lastCommentLine - firstCommentLine + 1,
-                     code: codeText});
-    }
-
-    jQuery.each(
-      lines,
-      function(lineNum) {
-        var line = this;
-        var isCode = true;
-        var isComment = (App.trim(line).indexOf("//") == 0);
-        if (isComment) {
-          var startIndex = line.indexOf("//");
-          var text = line.slice(startIndex + 3);
-          if (lineNum == lastCommentLine + 1) {
-            blockText += text + "\n";
-            lastCommentLine += 1;
-            isCode = false;
-          } else if (text[0] == "=" || text[0] == "*") {
-            maybeAppendBlock();
-            firstCommentLine = lineNum;
-            lastCommentLine = lineNum;
-            blockText = text + "\n";
-            codeText = "";
-            isCode = false;
-          }
-        }
-        if (isCode)
-          codeText += line + "\n";
-      });
-    maybeAppendBlock();
-
-    if (blocks.length)
-      return blocks;
-    else
-      return [{text: "No documentation exists for this file.",
-               lineno: 0,
-               numLines: 0,
-               code: code}];
-  },
-
-  renderDocText: function JsParser_renderDocText(jQuery, text) {
-    if (!this._creole)
-      this._creole = new Parse.Simple.Creole(
-        {interwiki: {
-           WikiCreole: 'http://www.wikicreole.org/wiki/',
-           Wikipedia: 'http://en.wikipedia.org/wiki/'
-         },
-         linkFormat: ''
-        });
-
-    var self = this;
-    jQuery.each(function() { self._creole.parse(this, text); });
-  },
-
-  renderCode: function JsParser_renderCode(jQuery, code) {
-    var self = this;
-    jQuery.text(code);
-  }
-};
-
-// ** {{{ App.parsers }}} **
-//
-// An array of parser interfaces, from least-specific to
-// most-specific. That is, the "default" parser that is used if no
-// more specialized parser can be found is the first item in the
-// array, followed by the next least specific one, and so on.
-
-App.parsers = [new App.TrivialParser(/.*/),
-               new App.JsParser()];
-
 // ** {{{ App.trim() }}} **
 //
-// Simple utility function to trim whitespace from both sides of a string.
+// Returns {{{str}}} without whitespace at the beginning and the end.
 
 App.trim = function trim(str) {
   return str.replace(/^\s+|\s+$/g,"");
@@ -194,39 +59,82 @@ App.trim = function trim(str) {
 
 App.processors = [];
 
-// Has a {label, urlOrCallback} dict for each keyword.
+App.menuItems = {};   // Has a {label, urlOrCallback} dict for each keyword.
 
-App.menuItems = {};
-
-// ** {{{ App.getParserForFile() }}} **
+// ** {{{ App.processCode() }}} **
 //
-// Given a filename, attempts to find the best parser for it and
-// returns it.
+// Splits {{{code}}} in documented blocks and puts them in {{{div}}}.
+// The used structure for each block is:
+// {{{
+// <div class="documentation"> (...) </div>
+// <div class="code"> (...) </div>
+// <div class="divider"/>
+// }}}
+// Documentation is parsed using [[http://wikicreole.org/|Creole]].
 
-App.getParserForFile = function getParserForFile(filename) {
-  for (var i = App.parsers.length - 1; i >= 0; i--)
-    if (filename.match(App.parsers[i].pattern))
-      return App.parsers[i];
-  throw new Error("Parser not found for " + filename);
-};
+App.processCode = function processCode(code, div) {
+  var lines = code.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var blocks = [];
+  var blockText = "";
+  var codeText = "";
+  var firstCommentLine;
+  var lastCommentLine;
 
-// ** {{{ App.layout() }}} **
-//
-// Given a parser implementation, a body of text, and a DOM element,
-// splits the code from the documentation and lays them out
-// side-by-side into the DOM element.
+  function maybeAppendBlock() {
+    if (blockText)
+      blocks.push({text: blockText,
+                   lineno: firstCommentLine,
+                   numLines: lastCommentLine - firstCommentLine + 1,
+                   code: codeText});
+  }
 
-App.layout = function layout(parser, code, div) {
   jQuery.each(
-    parser.blockify(code),
-    function() {
+    lines,
+    function(lineNum) {
+      var line = this;
+      var isCode = true;
+      var isComment = (App.trim(line).indexOf("//") == 0);
+      if (isComment) {
+        var startIndex = line.indexOf("//");
+        var text = App.trim(line.slice(startIndex + 3));
+        if (lineNum == lastCommentLine + 1) {
+          blockText += text + "\n";
+          lastCommentLine += 1;
+          isCode = false;
+        } else if (text.charAt(0) == "=" || text.charAt(0) == "*") {
+          maybeAppendBlock();
+          firstCommentLine = lineNum;
+          lastCommentLine = lineNum;
+          blockText = text + "\n";
+          codeText = "";
+          isCode = false;
+        }
+      }
+      if (isCode)
+        codeText += line + "\r\n";
+    });
+  maybeAppendBlock();
+
+  var creole = new Parse.Simple.Creole(
+    {
+      forIE: document.all,
+      interwiki: {
+        WikiCreole: 'http://www.wikicreole.org/wiki/',
+        Wikipedia: 'http://en.wikipedia.org/wiki/'
+      },
+      linkFormat: ''
+    });
+
+  jQuery.each(
+    blocks,
+    function(i) {
       var docs = $('<div class="documentation">');
-      docs.css(App.columnCss);
-      parser.renderDocText(docs, this.text);
+      $(docs).css(App.columnCss);
+      creole.parse(docs.get(0), this.text);
       $(div).append(docs);
       var code = $('<div class="code">');
-      code.css(App.columnCss);
-      parser.renderCode(code, this.code);
+      $(code).css(App.columnCss);
+      code.text(this.code);
       $(div).append(code);
 
       var docsSurplus = docs.height() - code.height() + 1;
@@ -239,8 +147,8 @@ App.layout = function layout(parser, code, div) {
   // Run the user-defined processors.
   jQuery.each(
     App.processors,
-    function() {
-      this($(div).find(".documentation"));
+    function(i) {
+      App.processors[i]($(div).find(".documentation"));
     });
 };
 
@@ -285,8 +193,9 @@ App.addMenuItem = function addMenuItem(element, label, urlOrCallback) {
 
         jQuery.each(
           App.menuItems[text],
-          function() {
-            addItemToPopup(this.label, this.urlOrCallback);
+          function(i) {
+            var item = App.menuItems[text][i];
+            addItemToPopup(item.label, item.urlOrCallback);
           });
 
         popup.find(".item:last").addClass("bottom");
@@ -304,102 +213,42 @@ App.addMenuItem = function addMenuItem(element, label, urlOrCallback) {
   App.menuItems[text].push({ label: label, urlOrCallback: urlOrCallback });
 };
 
-// The current page we're on.
-
 App.currentPage = null;
-
-// The current section of the current page we're on.
-
-App.currentSection = null;
-
-// Maps filenames to DOM elements containing the rendered
-// documentation and source code for the filename.
 
 App.pages = {};
 
 // ** {{{ App.navigate() }}} **
 //
-// Navigates to the code/documentation of a different file if
-// needed. The appropriate view is fetched from the URL hash. If that
-// is empty, the overview is shown.
+// Navigates to a different view if needed.  The appropriate view is
+// fetched from the URL hash.  If that is empty, the original page content
+// is shown.
 
 App.navigate = function navigate() {
   var newPage;
-  var section;
   if (window.location.hash)
     newPage = window.location.hash.slice(1);
   else
     newPage = "overview";
 
-  var hashIndex = newPage.indexOf("#");
-  if (hashIndex != -1) {
-    section = newPage.slice(hashIndex + 1).replace(/_/g, " ");
-    newPage = newPage.slice(0, hashIndex);
-  }
-
-  function scrollToAnchor() {
-    if (section) {
-      var anchor;
-      $(":header").each(
-        function() {
-          if ($(this).text() == section && !anchor)
-            anchor = this;
-        });
-      if (anchor)
-        window.scroll(0, $(anchor).offset().top);
-    } else
-      window.scroll(0, 0);
-  }
-
-  function onNewPageLoaded() {
-    $(App.pages[newPage]).show();
-    scrollToAnchor();
-  }
-
   if (App.currentPage != newPage) {
     if (App.currentPage)
       $(App.pages[App.currentPage]).hide();
-    App.currentPage = newPage;
-    App.currentSection = section;
     if (!App.pages[newPage]) {
-      var parser = App.getParserForFile(newPage);
       var newDiv = $("<div>");
       newDiv.attr("name", newPage);
       $("#content").append(newDiv);
       App.pages[newPage] = newDiv;
-      jQuery.ajax(
-        {url: newPage,
-         success: function onCodeLoaded(code) {
-           App.layout(parser, code, newDiv);
-           onNewPageLoaded();
-         },
-         error: function onError() {
-           newDiv.text("Sorry, couldn't load " + newPage + ".");
-         },
-         dataType: "text"}
-      );
-    } else
-      onNewPageLoaded();
-  } else
-    if (App.currentSection != section) {
-      App.currentSection = section;
-      scrollToAnchor();
+      jQuery.get(newPage,
+                 {},
+                 function(code) { App.processCode(code, newDiv); },
+                 "text");
     }
+    $(App.pages[newPage]).show();
+    App.currentPage = newPage;
+  }
 };
 
-// ** {{{ App.CHARS_PER_ROW }}} **
-//
-// Maximum number of characters per row to display on each column. By
-// default, this is typographically enforced: any lines that exceed
-// this number of characters per row will look bad because of
-// overflow, and intentionally so.
-
 App.CHARS_PER_ROW = 80;
-
-// ** {{{ App.initColumnSizes() }}} **
-//
-// Dynamically initializes the widths of the code and documentation
-// columns.
 
 App.initColumnSizes = function initSizes() {
   // Get the width of a single monospaced character of code.
@@ -419,8 +268,6 @@ App.initColumnSizes = function initSizes() {
   $(".documentation").css(App.columnCss);
   $(".code").css(App.columnCss);
 };
-
-// == Initialization ==
 
 $(window).ready(
   function() {

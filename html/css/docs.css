@@ -1,5 +1,5 @@
 body {
-    font-family: palatino, georgia, verdana, arial, sans-serif;
+    font-family: palatino, palatino linotype, georgia, serif;
     font-size: 10pt;
     text-align: center;
 }
@@ -21,7 +21,7 @@ body {
     color: black;
     padding: 3px;
     border: black dotted;
-    border-width: 1px 1px 0 1px; 
+    border-width: 1px 1px 0 1px;
 }
 
 .popup .selected {
@@ -43,26 +43,13 @@ body {
     line-height: 1.4em;
 }
 
-.documentation h1 {
+.documentation h1, .documentation h2 {
     font-weight: normal;
-    line-height: 1.4em;
-}
-
-.documentation h2 {
-    font-weight: normal;
-    line-height: 1.4em;
-}
-
-.documentation pre {
-    font-family: monaco, andale mono, lucidatypewriter, courier,
-                 courier new, monospace;
-    font-size: 6pt;
     line-height: 1.4em;
 }
 
 .code {
-    font-family: monaco, andale mono, lucidatypewriter, courier,
-                 courier new, monospace;
+    font-family: monaco, consolas, andale mono, monospace;
     float: left;
     white-space: pre;
     font-size: 6pt;
@@ -72,16 +59,5 @@ body {
 .divider {
     clear: both;
     height: 0;
-    line-height: 0; 
-}
-
-.intra-wiki {
-    color: black;
-    text-decoration: none;
-    border-bottom: solid 1px gray;
-}
-
-a {
-    color: black;
-    text-decoration: underline;
+    line-height: 0;
 }
