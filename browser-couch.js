@@ -527,6 +527,11 @@ var BrowserCouch = function(opts){
               });
             },
             
+            // ==== Get Changes ====
+            // We poll the {{{_changes}}} endpoint to get the most
+            // recent documents. At the moment, we're not storing the
+            // sequence numbers for each server, however this is on 
+            // the TODO list.
             getChanges : function(cb){
               //If same domain
               var url = this.url + "/_changes";
@@ -545,14 +550,12 @@ var BrowserCouch = function(opts){
         sync = function(){
           $.each(databases, function(){
             var rdb = this;
-            // ==== Get Changes ====
-            // We poll the {{{_changes}}} endpoint to get the most
-            // recent documents. At the moment, we're not storing the
-            // sequence numbers for each server, however this is on 
-            // the TODO list.
+            
             rdb.getChanges(function(data){
               if (data && data.results){
-                // TODO, screw it, for now we'll assume the servers right
+                // ==== Merge new data back in ====
+                // TODO, screw it, for now we'll assume the servers right.
+                // - In future we need to store the conflicts in the doc
                 for (var d in data.results){
                   rdb.getDoc(data.results[d].id, function(doc){
                     console.log(doc);
@@ -568,7 +571,6 @@ var BrowserCouch = function(opts){
           // ==== Send Changes ====
           // We'll ultimately use the bulk update methods, but for
           // now, just iterate through the queue with a req for each
-            
           for(var x = queue.pop(); x; x = queue.pop()){
             $.each(databases, function(){
               this.putDoc(x);
@@ -579,6 +581,8 @@ var BrowserCouch = function(opts){
   
     for (var s in options.servers){
       databases.push(remoteDatabase(options.servers[s]));
+      // TODO - load the seq numbers for each db, and put the interval
+      // into a callback.
     }
     
     interval = setInterval(sync, options.interval || 5000);
