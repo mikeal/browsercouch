@@ -492,70 +492,95 @@ var BrowserCouch = function(opts){
         
 		
         // === Server Setup ===
-		// Because of the javascript cross domain limitations, we
-		// can only use the REST interface on a CouchDB server on 
-		// the same domain. TODO: We can use a shim js file, hosted
-		// as a design document in the remote database to get
-		// around this.
+        // Because of the javascript cross domain limitations, we
+        // can only use the REST interface on a CouchDB server on 
+        // the same domain. TODO: We can use a shim js file, hosted
+        // as a design document in the remote database to get
+        // around this.
+        
         remoteDatabase = function(url){   
           var rs = {
+            url : url,
+            seq : 0,
+            
+            addLoad : function(cb){
+              loadFuncs.push(cb);
+            },
+            
+            getDoc : function(id, cb){
+              // If Same Domain:
+              $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
+            },
+            
+            putDoc : function(doc, cb){
+              // If same Domain:
+              $.ajax({
+                url : this.url, 
+                data : JSON.stringify(doc),
+                type : 'PUT',
+                processData : false,
+                contentType : 'application/json',
+                complete: function(data){
+                  console.log(data);
+                  cb();
+                }
+              });
+            },
+            
+            getChanges : function(cb){
+              //If same domain
+              var url = this.url + "/_changes";
+              $.getJSON(url, {since : db.seq}, function(data){
+                console.log(data);
+                cb(data);               
+               });
+            }
+          
           };
-		  return rs;
+          return rs;
         },
+        
+        databases = [], // Populate further down. 
 
         sync = function(){
-          $.each(options.servers, function(){
-            getRemoteDoc = function(doc, callback){
-              var url = server + "/" + doc.id;
-              $.getJSON(url, {}, callback || function(){});
-            }
-            var server = this;
+          $.each(databases, function(){
+            var rdb = this;
             // ==== Get Changes ====
             // We poll the {{{_changes}}} endpoint to get the most
             // recent documents. At the moment, we're not storing the
             // sequence numbers for each server, however this is on 
             // the TODO list.
-    
-            var url = server + "/_changes";
-            $.getJSON(url, {since : db.seq}, function(data){
-              console.log(data);
+            rdb.getChanges(function(data){
               if (data && data.results){
                 // TODO, screw it, for now we'll assume the servers right
                 for (var d in data.results){
-                  getRemoteDoc(data.results[d], function(doc){
+                  rdb.getDoc(data.results[d].id, function(doc){
                     console.log(doc);
                     db.put(doc, function(){});
                     if (options.updateCallback)
                       options.updateCallback();
                   })
                 }
-                
-                
-             }
+              }
+            });   
           });
-  
+        
           // ==== Send Changes ====
           // We'll ultimately use the bulk update methods, but for
           // now, just iterate through the queue with a req for each
-          
-          for(var x = queue.pop(); x; x = queue.pop()){
-            var url = "/" + x._id;  
-            console.log("" + server + url, JSON.stringify(x));
             
-            $.ajax({
-              url : "" + server + url, 
-              data : JSON.stringify(x),
-              type : 'PUT',
-              processData : false,
-              contentType : 'application/json',
-              complete: function(data){
-                console.log(data);
-              }
+          for(var x = queue.pop(); x; x = queue.pop()){
+            $.each(databases, function(){
+              this.putDoc(x);
             });
-          } 
-        }); 
+          };  
       }
   
+  
+    for (var s in options.servers){
+      databases.push(remoteDatabase(options.servers[s]));
+    }
+    
     interval = setInterval(sync, options.interval || 5000);
    
     return {
