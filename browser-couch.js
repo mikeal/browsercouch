@@ -910,6 +910,8 @@ var BrowserCouch = function(opts){
   // === //List All Databases// ===
   //
   // Similar to {{{/_all_dbs}}}
+  // TODO - as there is no way to see what keys are stored in localStorage,
+  //    we're going to have to store a metadata database
   //
   bc.allDbs = function(){
     return []//TODO
