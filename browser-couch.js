@@ -490,8 +490,19 @@ var BrowserCouch = function(opts){
         interval,   // For now we'll just have a sync interval
                     // running periodically   
         
+		
+        // === Server Setup ===
+		// Because of the javascript cross domain limitations, we
+		// can only use the REST interface on a CouchDB server on 
+		// the same domain. TODO: We can use a shim js file, hosted
+		// as a design document in the remote database to get
+		// around this.
+        remoteDatabase = function(url){   
+          var rs = {
+          };
+		  return rs;
+        },
 
-        
         sync = function(){
           $.each(options.servers, function(){
             getRemoteDoc = function(doc, callback){
