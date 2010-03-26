@@ -581,6 +581,13 @@ var BrowserCouch = function(opts){
     if (options && options.sync){
       syncManager = BrowserCouch.SyncManager(name, self, options.sync);
     }
+    self.sync = function (dburls) {
+      if (!dburls) {
+        return syncManager.sync();
+      } else {
+        return BrowserCouch.SyncManager(name, self, {sync:{servers:dburls}});
+      }
+    }
     
     storage.get(metaName, function(meta){
       // Load meta-data before setting up database object
@@ -787,6 +794,9 @@ var BrowserCouch = function(opts){
         // the same domain. TODO: We can use a shim js file, hosted
         // as a design document in the remote database to get
         // around this.
+        // <mikeal> maybe just accept any full url to a couch and 
+        // then when you have XSS XHR headers it'll work. Don't worry
+        // about validation.
         
         
         remoteDatabase = function(url){   
@@ -823,6 +833,7 @@ var BrowserCouch = function(opts){
             // recent documents. At the moment, we're not storing the
             // sequence numbers for each server, however this is on 
             // the TODO list.
+            
             getChanges : function(cb){
               //If same domain
               var url = this.url + "/_changes";
