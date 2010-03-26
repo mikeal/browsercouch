@@ -322,6 +322,83 @@ var BrowserCouch = function(opts){
     }
   };
   
+    
+  
+    // == View ==
+  bc._View = function BC__View(rows) {
+    this.rows = rows;
+
+    function findRow(key, rows) {
+      if (rows.length > 1) {
+        var midpoint = Math.floor(rows.length / 2);
+        var row = rows[midpoint];
+        if (key < row.key)
+          return findRow(key, rows.slice(0, midpoint));
+        if (key > row.key)
+          return midpoint + findRow(key, rows.slice(midpoint));
+        return midpoint;
+      } else
+        return 0;
+    }
+
+    this.findRow = function V_findRow(key) {
+      return findRow(key, rows);
+    };
+  },
+  
+
+  // == MapView ==
+  bc._MapView = function BC__MapView(mapResult) {
+    var rows = [];
+    var keyRows = [];
+
+    var mapKeys = mapResult.keys;
+    var mapDict = mapResult.dict;
+
+    for (var i = 0; i < mapKeys.length; i++) {
+      var key = mapKeys[i];
+      var item = mapDict[key];
+      keyRows.push({key: key, pos: rows.length});
+      var newRows = [];
+      for (var j = 0; j < item.keys.length; j++) {
+        var id = item.keys[j];
+        var value = item.values[j];
+        newRows.push({_id: id,
+                      key: key,
+                      value: value});
+      }
+      newRows.sort(function(a, b) {
+                     if (a._id < b._id)
+                       return -1;
+                     if (a._id > b._id)
+                       return 1;
+                     return 0;
+                   });
+      rows = rows.concat(newRows);
+    }
+
+    function findRow(key, keyRows) {
+      if (keyRows.length > 1) {
+        var midpoint = Math.floor(keyRows.length / 2);
+        var keyRow = keyRows[midpoint];
+        if (key < keyRow.key)
+          return findRow(key, keyRows.slice(0, midpoint));
+        if (key > keyRow.key)
+          return findRow(key, keyRows.slice(midpoint));
+        return keyRow.pos;
+      } else
+        return keyRows[0].pos;
+    }
+
+    this.rows = rows;
+    this.findRow = function MV_findRow(key) {
+      return findRow(key, keyRows);
+    };
+  }
+  
+
+  
+  
   // == Storage Implementations ==
   //
   // //Storage// is a generic interface for a persistent storage
@@ -678,28 +755,11 @@ var BrowserCouch = function(opts){
     return self
   }
 
+  bc.SameDomainDB = function (url, cb, options){
+  }
 
-  // == View ==
-  bc._View = function BC__View(rows) {
-    this.rows = rows;
 
-    function findRow(key, rows) {
-      if (rows.length > 1) {
-        var midpoint = Math.floor(rows.length / 2);
-        var row = rows[midpoint];
-        if (key < row.key)
-          return findRow(key, rows.slice(0, midpoint));
-        if (key > row.key)
-          return midpoint + findRow(key, rows.slice(midpoint));
-        return midpoint;
-      } else
-        return 0;
-    }
 
-    this.findRow = function V_findRow(key) {
-      return findRow(key, rows);
-    };
-  },
   
   // == {{{SyncManager}}} ==
   //
@@ -829,6 +889,7 @@ var BrowserCouch = function(opts){
     }
   }
   
+
   
   
   // == BrowserCouch ==
@@ -853,59 +914,5 @@ var BrowserCouch = function(opts){
   bc.allDbs = function(){
     return []//TODO
   } 
-  
-  
-  
-
-
-  // == MapView ==
-  bc._MapView = function BC__MapView(mapResult) {
-    var rows = [];
-    var keyRows = [];
-
-    var mapKeys = mapResult.keys;
-    var mapDict = mapResult.dict;
-
-    for (var i = 0; i < mapKeys.length; i++) {
-      var key = mapKeys[i];
-      var item = mapDict[key];
-      keyRows.push({key: key, pos: rows.length});
-      var newRows = [];
-      for (var j = 0; j < item.keys.length; j++) {
-        var id = item.keys[j];
-        var value = item.values[j];
-        newRows.push({_id: id,
-                      key: key,
-                      value: value});
-      }
-      newRows.sort(function(a, b) {
-                     if (a._id < b._id)
-                       return -1;
-                     if (a._id > b._id)
-                       return 1;
-                     return 0;
-                   });
-      rows = rows.concat(newRows);
-    }
-
-    function findRow(key, keyRows) {
-      if (keyRows.length > 1) {
-        var midpoint = Math.floor(keyRows.length / 2);
-        var keyRow = keyRows[midpoint];
-        if (key < keyRow.key)
-          return findRow(key, keyRows.slice(0, midpoint));
-        if (key > keyRow.key)
-          return findRow(key, keyRows.slice(midpoint));
-        return keyRow.pos;
-      } else
-        return keyRows[0].pos;
-    }
-
-    this.rows = rows;
-    this.findRow = function MV_findRow(key) {
-      return findRow(key, keyRows);
-    };
-  }
-  
   return bc
 }();  
