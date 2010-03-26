@@ -475,165 +475,13 @@ var BrowserCouch = function(opts){
     };
   }
 
-  
-  // == {{{SyncManager}}} ==
-  //
-  // {{{SyncManager}}} syncs the local storage with a remote couchdb server
-  // when possible. This introduces the possibility for conflicts, thus
-  // we need a callback should a conflict occurr 
-  //
-  
-  bc.SyncManager = function(name, db, options){
-    var queue = [], // An queue of updated documents waiting to be
-                    // synced back to the servers
-        
-        interval,   // For now we'll just have a sync interval
-                    // running periodically   
-        
-		
-        // === Server Setup ===
-        // There's 3 possibilities here. We could be syncing with 
-        // another browsercouch on this page, we could be talking
-        // to a CouchDB server on this domain, or we could be
-        // talking to a remote server via a shim.  
-        //
-        // Because of the javascript cross domain limitations, we
-        // can only use the REST interface on a CouchDB server on 
-        // the same domain. TODO: We can use a shim js file, hosted
-        // as a design document in the remote database to get
-        // around this.
-        
-        
-        remoteDatabase = function(url){   
-          var rs = {
-            url : url,
-            seq : 0,
-            
-            addLoad : function(cb){
-              loadFuncs.push(cb);
-            },
-            
-            getDoc : function(id, cb){
-              // If Same Domain:
-              $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
-            },
-            
-            putDoc : function(doc, cb){
-              // If same Domain:
-              $.ajax({
-                url : this.url, 
-                data : JSON.stringify(doc),
-                type : 'PUT',
-                processData : false,
-                contentType : 'application/json',
-                complete: function(data){
-                  console.log(data);
-                  cb();
-                }
-              });
-            },
-            
-            // ==== Get Changes ====
-            // We poll the {{{_changes}}} endpoint to get the most
-            // recent documents. At the moment, we're not storing the
-            // sequence numbers for each server, however this is on 
-            // the TODO list.
-            getChanges : function(cb){
-              //If same domain
-              var url = this.url + "/_changes";
-              $.getJSON(url, {since : db.seq}, function(data){
-                console.log(data);
-                cb(data);               
-               });
-            }
-          
-          };
-          return rs;
-        },
-        
-        databases = [], // Populate further down. 
 
-        sync = function(){
-          $.each(databases, function(){
-            var rdb = this;
-            
-            rdb.getChanges(function(data){
-              if (data && data.results){
-                // ==== Merge new data back in ====
-                // TODO, screw it, for now we'll assume the servers right.
-                // - In future we need to store the conflicts in the doc
-                for (var d in data.results){
-                  rdb.getDoc(data.results[d].id, function(doc){
-                    console.log(doc);
-                    db.put(doc, function(){});
-                    if (options.updateCallback)
-                      options.updateCallback();
-                  })
-                }
-              }
-            });   
-          });
-        
-          // ==== Send Changes ====
-          // We'll ultimately use the bulk update methods, but for
-          // now, just iterate through the queue with a req for each
-          for(var x = queue.pop(); x; x = queue.pop()){
-            $.each(databases, function(){
-              this.putDoc(x);
-            });
-          };  
-      }
-  
-  
-    for (var s in options.servers){
-      databases.push(remoteDatabase(options.servers[s]));
-      // TODO - load the seq numbers for each db, and put the interval
-      // into a callback.
-    }
-    
-    interval = setInterval(sync, options.interval || 5000);
-   
-    return {
-      stopSync : function(){
-        clearInterval(interval);
-      },
-      sync : sync,
-      enqueue : function(doc){
-        queue.push(doc);
-      }
-    }
-  }
-  
-  
-  
-  // == BrowserCouch ==
-  //
-  // {{{BrowserCouch}}} is the main object that clients will use.  It's
-  // intended to be somewhat analogous to CouchDB's RESTful API.
-  
-  
-  // === //Get Database// ===
-  //
-  // Returns a wrapper to the database that emulates the HTTP methods
-  // available to /<database>/
-  //
-  bc.get = function BC_get(name, cb, storage, options) {
-    bc._DB(name, storage, cb, options, storage || new bc.LocalStorage());
-  },
-  
-  // === //List All Databases// ===
-  //
-  // Similar to {{{/_all_dbs}}}
-  //
-  bc.allDbs = function(){
-    return []//TODO
-  } 
-  
-  
-  
-	// == Database Wrapper Object == 
+	// == Database Wrapper Objects == 
 	//
 	// Called with the database name, returns a wrapper object
+	//
+	
+	// === Local Storage Database ===
 	//
   bc._DB = function(name, storage, cb, options) {
     var self = {},
@@ -852,6 +700,163 @@ var BrowserCouch = function(opts){
       return findRow(key, rows);
     };
   },
+  
+  // == {{{SyncManager}}} ==
+  //
+  // {{{SyncManager}}} syncs the local storage with a remote couchdb server
+  // when possible. This introduces the possibility for conflicts, thus
+  // we need a callback should a conflict occurr 
+  //
+  
+  bc.SyncManager = function(name, db, options){
+    var queue = [], // An queue of updated documents waiting to be
+                    // synced back to the servers
+        
+        interval,   // For now we'll just have a sync interval
+                    // running periodically   
+        
+		
+        // === Server Setup ===
+        // There's 3 possibilities here. We could be syncing with 
+        // another browsercouch on this page, we could be talking
+        // to a CouchDB server on this domain, or we could be
+        // talking to a remote server via a shim.  
+        //
+        // Because of the javascript cross domain limitations, we
+        // can only use the REST interface on a CouchDB server on 
+        // the same domain. TODO: We can use a shim js file, hosted
+        // as a design document in the remote database to get
+        // around this.
+        
+        
+        remoteDatabase = function(url){   
+          var rs = {
+            url : url,
+            seq : 0,
+            
+            addLoad : function(cb){
+              loadFuncs.push(cb);
+            },
+            
+            getDoc : function(id, cb){
+              // If Same Domain:
+              $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
+            },
+            
+            putDoc : function(doc, cb){
+              // If same Domain:
+              $.ajax({
+                url : this.url, 
+                data : JSON.stringify(doc),
+                type : 'PUT',
+                processData : false,
+                contentType : 'application/json',
+                complete: function(data){
+                  console.log(data);
+                  cb();
+                }
+              });
+            },
+            
+            // ==== Get Changes ====
+            // We poll the {{{_changes}}} endpoint to get the most
+            // recent documents. At the moment, we're not storing the
+            // sequence numbers for each server, however this is on 
+            // the TODO list.
+            getChanges : function(cb){
+              //If same domain
+              var url = this.url + "/_changes";
+              $.getJSON(url, {since : db.seq}, function(data){
+                console.log(data);
+                cb(data);               
+               });
+            }
+          
+          };
+          return rs;
+        },
+        
+        databases = [], // Populate further down. 
+
+        sync = function(){
+          $.each(databases, function(){
+            var rdb = this;
+            
+            rdb.getChanges(function(data){
+              if (data && data.results){
+                // ==== Merge new data back in ====
+                // TODO, screw it, for now we'll assume the servers right.
+                // - In future we need to store the conflicts in the doc
+                for (var d in data.results){
+                  rdb.getDoc(data.results[d].id, function(doc){
+                    console.log(doc);
+                    db.put(doc, function(){});
+                    if (options.updateCallback)
+                      options.updateCallback();
+                  })
+                }
+              }
+            });   
+          });
+        
+          // ==== Send Changes ====
+          // We'll ultimately use the bulk update methods, but for
+          // now, just iterate through the queue with a req for each
+          for(var x = queue.pop(); x; x = queue.pop()){
+            $.each(databases, function(){
+              this.putDoc(x);
+            });
+          };  
+      }
+  
+  
+    for (var s in options.servers){
+      databases.push(remoteDatabase(options.servers[s]));
+      // TODO - load the seq numbers for each db, and put the interval
+      // into a callback.
+    }
+    
+    interval = setInterval(sync, options.interval || 5000);
+   
+    return {
+      stopSync : function(){
+        clearInterval(interval);
+      },
+      sync : sync,
+      enqueue : function(doc){
+        queue.push(doc);
+      }
+    }
+  }
+  
+  
+  
+  // == BrowserCouch ==
+  //
+  // {{{BrowserCouch}}} is the main object that clients will use.  It's
+  // intended to be somewhat analogous to CouchDB's RESTful API.
+  
+  
+  // === //Get Database// ===
+  //
+  // Returns a wrapper to the database that emulates the HTTP methods
+  // available to /<database>/
+  //
+  bc.get = function BC_get(name, cb, storage, options) {
+    bc._DB(name, storage, cb, options, storage || new bc.LocalStorage());
+  },
+  
+  // === //List All Databases// ===
+  //
+  // Similar to {{{/_all_dbs}}}
+  //
+  bc.allDbs = function(){
+    return []//TODO
+  } 
+  
+  
+  
+
 
   // == MapView ==
   bc._MapView = function BC__MapView(mapResult) {
