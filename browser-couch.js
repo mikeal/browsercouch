@@ -569,7 +569,7 @@ var BrowserCouch = function(opts){
         syncManager, 
         
         addToSyncQueue = function(document){
-          this.chgs.push(document)
+          self.chgs.push(document)
         },
         
         commitToStorage = function (cb) {
@@ -851,7 +851,9 @@ var BrowserCouch = function(opts){
         
         databases = [], // Populate further down. 
 
-        sync = bc.sync;      
+        sync = function(){
+          bc.sync(db, databases, {});
+          };      
       
   
     for (var s in options.servers){
@@ -862,15 +864,7 @@ var BrowserCouch = function(opts){
     
     interval = setInterval(sync, options.interval || 5000);
    
-    return {
-      stopSync : function(){
-        clearInterval(interval);
-      },
-      sync : sync,
-      enqueue : function(doc){
-        queue.push(doc);
-      }
-    }
+    return {}
   }
   
   bc.sync = function(source, target, options){
@@ -880,14 +874,15 @@ var BrowserCouch = function(opts){
       //
       $.each(databases, function(){
         console.log(this);
-        this.getChanges(function(data){
+        var rdb = this;
+        rdb.getChanges(function(data){
           if (data && data.results){
             // ==== Merge new data back in ====
             // TODO, screw it, for now we'll assume the servers right.
             // - In future we need to store the conflicts in the doc
             for (var d in data.results){
-              this.get(data.results[d].id, function(doc){
-              source.put(doc, function(){});
+              rdb.get(data.results[d].id, function(doc){
+                source.put(doc, function(){});
               if (options.updateCallback)
                 options.updateCallback();
               })
@@ -902,7 +897,7 @@ var BrowserCouch = function(opts){
       var chgs = source.getChanges()
       for(var x = chgs.pop(); x; x = chgs.pop()){
         $.each(databases, function(){
-          this.putDoc(x);
+          source.put(x);
         });
       }; 
     }
