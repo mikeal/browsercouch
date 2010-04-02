@@ -799,7 +799,7 @@ var BrowserCouch = function(opts){
       getChanges : function(cb){
         //If same domain
         var url = this.url + "/_changes";
-        $.getJSON(url, {since : db.seq}, function(data){
+        $.getJSON(url, {since : rs.seq}, function(data){
           console.log(data);
           cb(data);               
          });
@@ -846,26 +846,8 @@ var BrowserCouch = function(opts){
         
         remoteDatabase = function(url){   
           return bc.SameDomainDB(url);
-            },
-            
-            // ==== Get Changes ====
-            // We poll the {{{_changes}}} endpoint to get the most
-            // recent documents. At the moment, we're not storing the
-            // sequence numbers for each server, however this is on 
-            // the TODO list.
-            
-            getChanges : function(cb){
-              //If same domain
-              var url = this.url + "/_changes";
-              $.getJSON(url, {since : db.seq}, function(data){
-                console.log(data);
-                cb(data);               
-               });
-            }
-          
-          };
-          return rs;
         },
+        
         
         databases = [], // Populate further down. 
 
@@ -879,7 +861,7 @@ var BrowserCouch = function(opts){
                 // TODO, screw it, for now we'll assume the servers right.
                 // - In future we need to store the conflicts in the doc
                 for (var d in data.results){
-                  rdb.getDoc(data.results[d].id, function(doc){
+                  rdb.get(data.results[d].id, function(doc){
                     console.log(doc);
                     db.put(doc, function(){});
                     if (options.updateCallback)
@@ -951,11 +933,31 @@ var BrowserCouch = function(opts){
   
   // == Core Constructor ==
   var cons = function(name, options){
+    var self = {
+      
+      loadcbs : [],
+      
+      sync : function(options){
+        // TODO: bc.sync(self, options);
+      },
+      
+      onload : function(func){
+        self.loadcbs.push(func)
+      }
+      
+    
+    
+    };
+    
     bc.get(name, function(){
-      for (var cbi in this.loadcbs){
+      // onload callbacks
+      for (var cbi in self.loadcbs){
           this.cbs[cbi]();
         }
+        
       }, options.storage, options);
+    
+    return self;   
   }
   
   for (var k in bc){
