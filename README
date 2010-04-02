@@ -14,4 +14,4 @@ CouchDB in the browser - persistant, syncing client side storage.
  
  
  SYNC
- > database.sync(['http://localhost:5984/foo'], {continuous:true});
+ > database.sync('http://localhost:5984/foo', {continuous:true});

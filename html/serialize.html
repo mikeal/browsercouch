@@ -25,15 +25,16 @@ $(function(){
 	}
 	
 	var db = BrowserCouch("browser-couch", {storage: storage});
-	db.sync({
-		targets:["http://127.0.0.1:5984/foo", "http://127.0.0.1:5984/bar"],
+	var syncParams = {
 		update: function(){
 			console.log('updated');
 			update();	
 			}, 
 		continuous:true, 
 		timeout:10000
-	});
+	};
+	db.sync("http://localhost:5984/bar", syncParams)
+	db.sync("http://localhost:5984/foo", syncParams);
 	db.onload(function(db){
 			console.log('Database got')
 			update = function(){

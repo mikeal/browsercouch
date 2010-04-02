@@ -523,6 +523,10 @@ var BrowserCouch = function(opts){
       return dict[key];
     };
 
+    this.objects = function(){
+      return dict;
+    }
+    
     this.set = function Dictionary_set(key, value) {
       if (!(key in dict))
         keys.push(key);
@@ -567,10 +571,6 @@ var BrowserCouch = function(opts){
         metaName = 'BrowserCouch_Meta_' + name,
         dict = new bc._Dictionary(),
         syncManager, 
-        
-        addToSyncQueue = function(document){
-          self.chgs.push(document)
-        },
         
         commitToStorage = function (cb) {
           storage.put(dbName, dict.pickle(), function(){
@@ -618,7 +618,7 @@ var BrowserCouch = function(opts){
               obj._rev.slice(obj._rev.indexOf("-"));
           }
           if(options && (!options.noSync))
-            addToSyncQueue(obj);
+            self.chgs.push(obj)
           dict.set(obj._id, obj);
           
           //If new object 
@@ -739,9 +739,7 @@ var BrowserCouch = function(opts){
       };
       
       self.getChanges = function(cb){
-        var cp = self.chgs;
-        self.chgs = [];
-        cb(cp);
+        cb(dict.objects());
       }
         
       storage.get(
@@ -766,19 +764,17 @@ var BrowserCouch = function(opts){
         $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
       },
       
-      put : function(doc, cb, options){
-        if (options.noSync){
-          cb()
-        }
-        
+      put : function(doc, cb, options){       
         $.ajax({
-          url : this.url, 
+          url : this.url + "/" + doc._id, 
           data : JSON.stringify(doc),
           type : 'PUT',
           processData : false,
           contentType : 'application/json',
           complete: function(data){
-            cb();
+            if (cb){
+              cb();
+            }
           }
         });
       },
@@ -802,42 +798,35 @@ var BrowserCouch = function(opts){
     }
   }
 
-  
+  // === Function to sync between a source, and target database ===
   bc.sync = function(source, target, options){
     var options = options || {};
-    var _sync = function(){
-      var databases = isArray(target) ? target : [target];   
+    var _sync = function(){  
       // ==== Get Changes ====
-      //
-      $.each(databases, function(){
-        var rdb = this;
-        rdb.getChanges(function(data){
-          if (data && data.results){
-            // ==== Merge new data back in ====
-            // TODO, screw it, for now we'll assume the servers right.
-            // - In future we need to store the conflicts in the doc
-            for (var d in data.results){
-              rdb.get(data.results[d].id, function(doc){
-                source.put(doc, function(){
-                  if (options.update){
-                    options.update();
-                  }
-                },  {noSync:true});  
-              })
-            }
+      target.getChanges(function(data){
+        if (data && data.results){
+          // ==== Merge new data back in ====
+          // TODO, screw it, for now we'll assume the servers right.
+          // - In future we need to store the conflicts in the doc
+          for (var d in data.results){
+            target.get(data.results[d].id, function(doc){
+              source.put(doc, function(){
+                if (options.update){
+                  options.update();
+                }
+              });  
+            })
           }
-        });   
-      });
+        }
+      });   
+      
       
       // ==== Send Changes ====
       // We'll ultimately use the bulk update methods, but for
       // now, just iterate through the queue with a req for each
       source.getChanges(function(x){
         $.each(x, function(){
-          $.each(databases, function(){
-            source.put(this);
-   
-          });
+          target.put(this);
         });
       });
          
