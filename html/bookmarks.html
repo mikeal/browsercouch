@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+	  <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+	  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+	  <link rel="stylesheet" type="text/css" media="all"
+	        href="css/docs.css" />
+	  <title>Bookmarks</title>
+	  <script src="js/ext/jquery.js"></script>
+  	<script src="../browser-couch.js"></script>
+  	<script type='text/javascript'>
+
+var repaint = function(db){
+  console.log('repaint')
+  db.onload(function(x){
+		x.view({
+			finished: function(x){
+				$("#bookmarks").html("<ul />");
+				var rows = x.rows;
+				for (var y in rows){
+					console.log(rows[y]);
+					$("#bookmarks").append($("<li>" + rows[y].value + "</li>"));	
+				}
+			},
+		map : function(doc, emit){
+			if(doc){
+				emit(doc.id, doc.url);
+				}
+			}
+		});	
+	});
+}
+
+
+$(function(){
+	console.log("Document Loaded");
+  
+  var db = BrowserCouch('bookmarks');
+	
+	console.log("Database Created");
+	
+	db.sync(['http://localhost:5984/bookmarks'],
+		{'continuous' :true,
+		 'interval' :5000,
+		 'update' : function(){repaint(db)}
+		 });
+	
+	console.log("Database Sync Setup");
+		
+	db.onload(function(){
+		console.log("Loaded");
+		repaint(db);
+	});	
+
+});  	
+  	</script>
+  	
+  	
+  	
+  </head>
+	<body>
+		<h1>Bookmarks</h1>
+		<p>This is an application to demonstrate/experiment with
+			uses of browsercouch. Explore the code 
+			<a href="index.html#bookmarks.js">here</a>.
+		</p>
+		<div id = "bookmarks">
+			<p>Loading...
+		</div>	
+	</body>
+</html>
