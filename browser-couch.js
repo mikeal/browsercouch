@@ -917,7 +917,7 @@ var BrowserCouch = function(opts){
   // available to /<database>/
   //
   bc.get = function BC_get(name, cb, storage, options) {
-    bc._DB(name, storage, cb, options, storage || new bc.LocalStorage());
+    bc._DB(name, storage || new bc.LocalStorage(), cb, options);
   },
   
   // === //List All Databases// ===
@@ -933,28 +933,35 @@ var BrowserCouch = function(opts){
   
   // == Core Constructor ==
   var cons = function(name, options){
+  	var options = options || {};
+  	
     var self = {
-      
+      loaded : false,
       loadcbs : [],
       
-      sync : function(options){
-        // TODO: bc.sync(self, options);
+      sync : function(target, options){
+        // TODO: bc.sync(self, target, options);
       },
       
       onload : function(func){
-        self.loadcbs.push(func)
+      	if (self.loaded){
+      	  func();
+      	} else{
+          self.loadcbs.push(func)
+        }   
       }
       
     
     
     };
+    console.log('!' +name);
     
     bc.get(name, function(){
       // onload callbacks
+      self.loaded = true;
       for (var cbi in self.loadcbs){
-          this.cbs[cbi]();
+          self.loadcbs[cbi]();
         }
-        
       }, options.storage, options);
     
     return self;   
