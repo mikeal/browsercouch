@@ -560,7 +560,7 @@ var BrowserCouch = function(opts){
   // 
   
   // === Local Storage Database ===
-  //
+  // TODO, rename this
   bc._DB = function(name, storage, cb, options) {
     var self = {},
         dbName = 'BrowserCouch_DB_' + name,
@@ -569,8 +569,7 @@ var BrowserCouch = function(opts){
         syncManager, 
         
         addToSyncQueue = function(document){
-          if (syncManager)
-            syncManager.enqueue(document)
+          this.chgs.push(document)
         },
         
         commitToStorage = function (cb) {
@@ -578,6 +577,8 @@ var BrowserCouch = function(opts){
             storage.put(metaName, {seq : self.seq}, cb || function(){})
           });
         };
+    self.chgs = []; //TODO - this is until I get seq working.
+   
     
     if (options && options.sync){
       syncManager = BrowserCouch.SyncManager(name, self, options.sync);
@@ -747,7 +748,11 @@ var BrowserCouch = function(opts){
               options.finished(new BrowserCouch._MapView(mapResult));
           });
       };
-  
+      
+      self.getChanges = function(){
+        return self.chgs;
+      }
+        
       storage.get(
         dbName,
         function(obj) {
@@ -759,7 +764,6 @@ var BrowserCouch = function(opts){
       
       
     });
-      
     return self
   }
 
@@ -875,6 +879,7 @@ var BrowserCouch = function(opts){
       // ==== Get Changes ====
       //
       $.each(databases, function(){
+        console.log(this);
         this.getChanges(function(data){
           if (data && data.results){
             // ==== Merge new data back in ====
@@ -882,7 +887,6 @@ var BrowserCouch = function(opts){
             // - In future we need to store the conflicts in the doc
             for (var d in data.results){
               this.get(data.results[d].id, function(doc){
-              console.log(doc);
               source.put(doc, function(){});
               if (options.updateCallback)
                 options.updateCallback();
@@ -895,7 +899,8 @@ var BrowserCouch = function(opts){
       // ==== Send Changes ====
       // We'll ultimately use the bulk update methods, but for
       // now, just iterate through the queue with a req for each
-      for(var x = queue.pop(); x; x = queue.pop()){
+      var chgs = source.getChanges()
+      for(var x = chgs.pop(); x; x = chgs.pop()){
         $.each(databases, function(){
           this.putDoc(x);
         });
@@ -946,14 +951,16 @@ var BrowserCouch = function(opts){
       loadcbs : [],
       
       sync : function(target, syncOpts){
-        bc.get(target, function(db){
-            bc.sync(self, db, options);  
-          }, options.storage, options);
+        self.onload(function(db){
+          bc.get(target, function(rdb){
+              bc.sync(db, rdb, options);  
+            }, options.storage, options);
+        });
       },
       
       onload : function(func){
         if (self.loaded){
-          func();
+          func(self.db);
         } else{
           self.loadcbs.push(func)
         }   
@@ -964,11 +971,12 @@ var BrowserCouch = function(opts){
     };
     console.log('!' +name);
     
-    bc.get(name, function(){
+    bc.get(name, function(db){
+      self.db = db;
       // onload callbacks
       self.loaded = true;
       for (var cbi in self.loadcbs){
-          self.loadcbs[cbi]();
+          self.loadcbs[cbi](db);
         }
       }, options.storage, options);
     
