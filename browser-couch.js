@@ -553,14 +553,14 @@ var BrowserCouch = function(opts){
   }
 
 
-	// == Database Wrapper Objects == 
-	//
-	// A basic database interface. Implementing objects
-	// should support the basic REST commands that CouchDB uses
-	// 
-	
-	// === Local Storage Database ===
-	//
+  // == Database Wrapper Objects == 
+  //
+  // A basic database interface. Implementing objects
+  // should support the basic REST commands that CouchDB uses
+  // 
+  
+  // === Local Storage Database ===
+  //
   bc._DB = function(name, storage, cb, options) {
     var self = {},
         dbName = 'BrowserCouch_DB_' + name,
@@ -768,10 +768,6 @@ var BrowserCouch = function(opts){
       url : url,
       seq : 0,
       
-      addLoad : function(cb){
-        loadFuncs.push(cb);
-      },
-      
       get : function(id, cb){
         $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
       },
@@ -827,7 +823,7 @@ var BrowserCouch = function(opts){
         interval,   // For now we'll just have a sync interval
                     // running periodically   
         
-		
+    
         // === Server Setup ===
         // There's 3 possibilities here. We could be syncing with 
         // another browsercouch on this page, we could be talking
@@ -851,37 +847,8 @@ var BrowserCouch = function(opts){
         
         databases = [], // Populate further down. 
 
-        sync = function(){
-          $.each(databases, function(){
-            var rdb = this;
-            
-            rdb.getChanges(function(data){
-              if (data && data.results){
-                // ==== Merge new data back in ====
-                // TODO, screw it, for now we'll assume the servers right.
-                // - In future we need to store the conflicts in the doc
-                for (var d in data.results){
-                  rdb.get(data.results[d].id, function(doc){
-                    console.log(doc);
-                    db.put(doc, function(){});
-                    if (options.updateCallback)
-                      options.updateCallback();
-                  })
-                }
-              }
-            });   
-          });
-        
-          // ==== Send Changes ====
-          // We'll ultimately use the bulk update methods, but for
-          // now, just iterate through the queue with a req for each
-          for(var x = queue.pop(); x; x = queue.pop()){
-            $.each(databases, function(){
-              this.putDoc(x);
-            });
-          };  
-      }
-  
+        sync = bc.sync;      
+      
   
     for (var s in options.servers){
       databases.push(remoteDatabase(options.servers[s]));
@@ -902,6 +869,45 @@ var BrowserCouch = function(opts){
     }
   }
   
+  bc.sync = function(source, target, options){
+    var _sync = function(){
+      var databases = isArray(target) ? target : [target];   
+      // ==== Get Changes ====
+      //
+      $.each(databases, function(){
+        this.getChanges(function(data){
+          if (data && data.results){
+            // ==== Merge new data back in ====
+            // TODO, screw it, for now we'll assume the servers right.
+            // - In future we need to store the conflicts in the doc
+            for (var d in data.results){
+              this.get(data.results[d].id, function(doc){
+              console.log(doc);
+              source.put(doc, function(){});
+              if (options.updateCallback)
+                options.updateCallback();
+              })
+            }
+          }
+        });   
+      });
+      
+      // ==== Send Changes ====
+      // We'll ultimately use the bulk update methods, but for
+      // now, just iterate through the queue with a req for each
+      for(var x = queue.pop(); x; x = queue.pop()){
+        $.each(databases, function(){
+          this.putDoc(x);
+        });
+      }; 
+    }
+    
+    _sync();
+    
+    if (options.continuous){
+      var interval = setInterval(_sync, options.timeout || 3000);  
+    }
+  }
 
   
   
@@ -933,20 +939,22 @@ var BrowserCouch = function(opts){
   
   // == Core Constructor ==
   var cons = function(name, options){
-  	var options = options || {};
-  	
+    var options = options || {};
+    
     var self = {
       loaded : false,
       loadcbs : [],
       
-      sync : function(target, options){
-        // TODO: bc.sync(self, target, options);
+      sync : function(target, syncOpts){
+        bc.get(target, function(db){
+            bc.sync(self, db, options);  
+          }, options.storage, options);
       },
       
       onload : function(func){
-      	if (self.loaded){
-      	  func();
-      	} else{
+        if (self.loaded){
+          func();
+        } else{
           self.loadcbs.push(func)
         }   
       }
