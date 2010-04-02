@@ -24,8 +24,18 @@ $(function(){
 		return t;	
 	}
 	
-	BrowserCouch.get("browser-couch",
-		function(db){
+	var db = BrowserCouch("browser-couch", {storage: storage});
+	db.sync({
+		targets:["http://127.0.0.1:5984/foo", "http://127.0.0.1:5984/bar"],
+		update: function(){
+			console.log('updated');
+			update();	
+			}, 
+		continuous:true, 
+		timeout:10000
+	});
+	db.onload(function(db){
+			console.log('Database got')
 			update = function(){
 				db.view({
 					finished: function(x){
@@ -53,15 +63,8 @@ $(function(){
 			});
 			
 			update();
-		},
-		storage,
-		{sync:{servers:["http://127.0.0.1:5984/foo", "http://127.0.0.1:5984/bar"],
-			updateCallback : function(){
-				update();
-			}
-		}
-	});
-});		
+		});
+});				 
 		</script>
 	</head>
 	<body>

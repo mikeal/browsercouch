@@ -120,11 +120,10 @@ var Tests = {
   },
   _setupTestDb: function(cb) {
     var documents = this._testDbContents;
-    BrowserCouch.get(
-      "blarg",
-      function(db) {
-        db.wipe(
-          function() {
+    var db = BrowserCouch("blarg", {storage: new BrowserCouch.FakeStorage()});
+    db.onload(function() {
+      db.wipe(
+        function() {
             db.put(
               documents,
               function() {
@@ -135,9 +134,7 @@ var Tests = {
               }
             );
           });
-      },
-      new BrowserCouch.FakeStorage()
-    );
+      });
   },
   _testDbContents: [{_id: "monkey",
                      content: "hello there dude"},

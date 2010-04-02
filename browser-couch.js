@@ -580,10 +580,6 @@ var BrowserCouch = function(opts){
     self.chgs = []; //TODO - this is until I get seq working.
    
     
-    if (options && options.sync){
-      syncManager = BrowserCouch.SyncManager(name, self, options.sync);
-    }
-    
     storage.get(metaName, function(meta){
       // Load meta-data before setting up database object
       
@@ -743,7 +739,9 @@ var BrowserCouch = function(opts){
       };
       
       self.getChanges = function(cb){
-        cb(self.chgs);
+        var cp = self.chgs;
+        self.chgs = [];
+        cb(cp);
       }
         
       storage.get(
@@ -757,7 +755,6 @@ var BrowserCouch = function(opts){
       
       
     });
-    return self
   }
 
   bc.SameDomainDB = function (url, cb, options){
@@ -770,6 +767,10 @@ var BrowserCouch = function(opts){
       },
       
       put : function(doc, cb, options){
+        if (options.noSync){
+          cb()
+        }
+        
         $.ajax({
           url : this.url, 
           data : JSON.stringify(doc),
@@ -777,7 +778,6 @@ var BrowserCouch = function(opts){
           processData : false,
           contentType : 'application/json',
           complete: function(data){
-            console.log(data);
             cb();
           }
         });
@@ -792,95 +792,37 @@ var BrowserCouch = function(opts){
       getChanges : function(cb){
         var url = this.url + "/_changes";
         $.getJSON(url, {since : rs.seq}, function(data){
-          console.log("@", data);
           cb(data);               
          });
       }
     
     };
-    cb(rs);
-
-  }
-
-
-
-  
-  // == {{{SyncManager}}} ==
-  //
-  // {{{SyncManager}}} syncs the local storage with a remote couchdb server
-  // when possible. This introduces the possibility for conflicts, thus
-  // we need a callback should a conflict occurr 
-  //
-  
-  bc.SyncManager = function(name, db, options){
-    var queue = [], // An queue of updated documents waiting to be
-                    // synced back to the servers
-        
-        interval,   // For now we'll just have a sync interval
-                    // running periodically   
-        
-    
-        // === Server Setup ===
-        // There's 3 possibilities here. We could be syncing with 
-        // another browsercouch on this page, we could be talking
-        // to a CouchDB server on this domain, or we could be
-        // talking to a remote server via a shim.  
-        //
-        // Because of the javascript cross domain limitations, we
-        // can only use the REST interface on a CouchDB server on 
-        // the same domain. TODO: We can use a shim js file, hosted
-        // as a design document in the remote database to get
-        // around this.
-        // <mikeal> maybe just accept any full url to a couch and 
-        // then when you have XSS XHR headers it'll work. Don't worry
-        // about validation.
-        
-        
-        remoteDatabase = function(url){   
-          return bc.SameDomainDB(url);
-        },
-        
-        
-        databases = [], // Populate further down. 
-
-        sync = function(){
-          bc.sync(db, databases, options);
-          };      
-      
-  
-    for (var s in options.servers){
-      databases.push(remoteDatabase(options.servers[s]));
-      // TODO - load the seq numbers for each db, and put the interval
-      // into a callback.
+    if (cb){
+      cb(rs);
     }
-       
-    return {}
   }
+
   
   bc.sync = function(source, target, options){
-    console.log("^", source, target);
+    var options = options || {};
     var _sync = function(){
       var databases = isArray(target) ? target : [target];   
       // ==== Get Changes ====
       //
       $.each(databases, function(){
-        console.log("*", this);
         var rdb = this;
         rdb.getChanges(function(data){
-          console.log("REMOTE CHGS" , data);
           if (data && data.results){
             // ==== Merge new data back in ====
             // TODO, screw it, for now we'll assume the servers right.
             // - In future we need to store the conflicts in the doc
             for (var d in data.results){
-              console.log("!", d, data.results[d]);
               rdb.get(data.results[d].id, function(doc){
-                console.log("&", doc);
                 source.put(doc, function(){
                   if (options.update){
                     options.update();
                   }
-                });  
+                },  {noSync:true});  
               })
             }
           }
@@ -890,12 +832,15 @@ var BrowserCouch = function(opts){
       // ==== Send Changes ====
       // We'll ultimately use the bulk update methods, but for
       // now, just iterate through the queue with a req for each
-      var chgs = source.getChanges()
-      for(var x = chgs.pop(); x; x = chgs.pop()){
-        $.each(databases, function(){
-          source.put(x);
+      source.getChanges(function(x){
+        $.each(x, function(){
+          $.each(databases, function(){
+            source.put(this);
+   
+          });
         });
-      }; 
+      });
+         
     }
     
     _sync();
@@ -914,12 +859,9 @@ var BrowserCouch = function(opts){
   
   
   // === //Get Database// ===
-  //
-  // Returns a wrapper to the database that emulates the HTTP methods
-  // available to /<database>/
-  //
+
   bc.get = function BC_get(name, cb, storage, options) {
-    bc._DB(name, storage || new bc.LocalStorage(), cb, options);
+    
   },
   
   // === //List All Databases// ===
@@ -934,6 +876,10 @@ var BrowserCouch = function(opts){
   
   
   // == Core Constructor ==
+  //
+  // Returns a wrapper to the database that emulates the HTTP methods
+  // available to /<database>/
+  //
   var cons = function(name, options){
     var options = options || {};
     
@@ -943,9 +889,7 @@ var BrowserCouch = function(opts){
       
       sync : function(target, syncOpts){
         self.onload(function(){
-          console.log("Adding sync");
             bc.SameDomainDB(target, function(rdb){
-              console.log("#", rdb);
               bc.sync(self, rdb, syncOpts);  
             }, options.storage, options)
           });
@@ -962,9 +906,8 @@ var BrowserCouch = function(opts){
     
     
     };
-    console.log('!' +name);
     
-    bc.get(name, function(db){
+    bc._DB(name, options.storage || new bc.LocalStorage(), function(db){
       for (var k in db){
         self[k] = db[k];
       }  
@@ -974,7 +917,7 @@ var BrowserCouch = function(opts){
       for (var cbi in self.loadcbs){
           self.loadcbs[cbi](self);
         }
-      }, options.storage, options);
+      }, options);
     
     return self;   
   }
