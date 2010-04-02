@@ -839,20 +839,7 @@ var BrowserCouch = function(opts){
     }
   }
 
-  
-  
-  // == BrowserCouch ==
-  //
-  // {{{BrowserCouch}}} is the main object that clients will use.  It's
-  // intended to be somewhat analogous to CouchDB's RESTful API.
-  
-  
-  // === //Get Database// ===
 
-  bc.get = function BC_get(name, cb, storage, options) {
-    
-  },
-  
   // === //List All Databases// ===
   //
   // Similar to {{{/_all_dbs}}}
@@ -864,7 +851,10 @@ var BrowserCouch = function(opts){
   } 
   
   
-  // == Core Constructor ==
+  // == {{{BrowserCouch}}} Core Constructor ==
+  //
+  // {{{BrowserCouch}}} is the main object that clients will use.  It's
+  // intended to be somewhat analogous to CouchDB's RESTful API.
   //
   // Returns a wrapper to the database that emulates the HTTP methods
   // available to /<database>/
