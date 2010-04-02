@@ -41,6 +41,7 @@
 // navigate through and read the documentation.
 
 var App = {
+  options : {}
 };
 
 // ** {{{ App.trim() }}} **
@@ -79,18 +80,30 @@ App.processCode = function processCode(code, div) {
   var codeText = "";
   var firstCommentLine;
   var lastCommentLine;
+  var _lineNum;
 
   function maybeAppendBlock() {
-    if (blockText)
+    if (blockText){
       blocks.push({text: blockText,
                    lineno: firstCommentLine,
                    numLines: lastCommentLine - firstCommentLine + 1,
+                   lastCode : _lineNum,
                    code: codeText});
+    } else if(codeText){
+      blocks.push({text: "~ ",
+                   lineno: 0,
+                   numLines: 0,
+                   lastCode : _lineNum,
+                   code: codeText});
+    
+    }
+                    
   }
 
   jQuery.each(
     lines,
     function(lineNum) {
+      _lineNum = lineNum;
       var line = this;
       var isCode = true;
       var isComment = (App.trim(line).indexOf("//") == 0);
@@ -124,23 +137,41 @@ App.processCode = function processCode(code, div) {
       },
       linkFormat: ''
     });
-
+  
+  var cont = [];
+  var headers = ['h1', 'h2', 'h3', 'h4', "strong"];
+  
   jQuery.each(
     blocks,
     function(i) {
       var docs = $('<div class="documentation">');
-      $(docs).css(App.columnCss);
+      docs.css(App.columnCss);
       creole.parse(docs.get(0), this.text);
+      
+      for(var h in headers){
+        var hd = headers[h];
+        if (docs.find(hd).length > 0){
+          var titl = docs.find(hd)
+          titl.attr('id', titl.text().replace(" ", "_"));
+          cont.push([titl.attr('id'), hd, titl]);
+        }
+      }
       $(div).append(docs);
-      var code = $('<div class="code">');
+      var num = $('<div class = "nums">');
+      for (var x = this.lineno + this.numLines +1; x<this.lastCode; x++){
+        num.append(x + '\n');
+      }
+      $(div).append(num);
+      var code = $('<code class="code prettyprint">');
       $(code).css(App.columnCss);
       code.text(this.code);
       $(div).append(code);
 
       var docsSurplus = docs.height() - code.height() + 1;
-      if (docsSurplus > 0)
+      if (docsSurplus > 0){
         code.css({paddingBottom: docsSurplus + "px"});
-
+        num.css({paddingBottom: docsSurplus + "px"})
+      }
       $(div).append('<div class="divider">');
     });
 
@@ -150,6 +181,17 @@ App.processCode = function processCode(code, div) {
     function(i) {
       App.processors[i]($(div).find(".documentation"));
     });
+    
+  // == Table Of Contents ==
+  var ul = $("<ul class = 'toc' />");
+  for (var k in cont){
+    var ln = $("<li class = '" + cont[k][1] + "'>" +
+      "<span class = 'pseudo-link' href = '" + cont[k][0] +
+      "'>" + cont[k][2].text() + "</span></li>");
+    ul.append(ln);
+  }
+  //div.prepend(ul);
+     
 };
 
 // ** {{{ App.addMenuItem() }}} **
@@ -240,7 +282,9 @@ App.navigate = function navigate() {
       App.pages[newPage] = newDiv;
       jQuery.get(newPage,
                  {},
-                 function(code) { App.processCode(code, newDiv); },
+                 function(code) { 
+                   App.processCode(code, newDiv);
+                   prettyPrint();},
                  "text");
     }
     $(App.pages[newPage]).show();
@@ -264,18 +308,25 @@ App.initColumnSizes = function initSizes() {
   App.columnCss = {width: App.columnWidth,
                    paddingLeft: padding,
                    paddingRight: padding};
-  $("#content").css({width: (App.columnWidth + padding*2) * 2});
+  $("#content").css({width: (App.columnWidth + padding*2) * 2 + (3*App.charWidth)});
   $(".documentation").css(App.columnCss);
   $(".code").css(App.columnCss);
+  $(".nums").css({width : 3*App.charWidth});
 };
 
-$(window).ready(
-  function() {
+$(function() {
+  $('.pseudo-link').live('click', function(){
+    console.log(this);
+  });
+  $.getScript('js/ext/prettify.js', function(success){
     App.pages["overview"] = $("#overview").get(0);
     App.initColumnSizes();
     window.setInterval(
-      function() { App.navigate(); },
+      function() {
+        App.navigate();
+        },
       100
-    );
+     );
     App.navigate();
   });
+});
