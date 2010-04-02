@@ -555,8 +555,9 @@ var BrowserCouch = function(opts){
 
 	// == Database Wrapper Objects == 
 	//
-	// Called with the database name, returns a wrapper object
-	//
+	// A basic database interface. Implementing objects
+	// should support the basic REST commands that CouchDB uses
+	// 
 	
 	// === Local Storage Database ===
 	//
@@ -763,6 +764,50 @@ var BrowserCouch = function(opts){
   }
 
   bc.SameDomainDB = function (url, cb, options){
+   var rs = {
+      url : url,
+      seq : 0,
+      
+      addLoad : function(cb){
+        loadFuncs.push(cb);
+      },
+      
+      get : function(id, cb){
+        $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
+      },
+      
+      put : function(doc, cb, options){
+        $.ajax({
+          url : this.url, 
+          data : JSON.stringify(doc),
+          type : 'PUT',
+          processData : false,
+          contentType : 'application/json',
+          complete: function(data){
+            console.log(data);
+            cb();
+          }
+        });
+      },
+      
+      // ==== Get Changes ====
+      // We poll the {{{_changes}}} endpoint to get the most
+      // recent documents. At the moment, we're not storing the
+      // sequence numbers for each server, however this is on 
+      // the TODO list.
+      
+      getChanges : function(cb){
+        //If same domain
+        var url = this.url + "/_changes";
+        $.getJSON(url, {since : db.seq}, function(data){
+          console.log(data);
+          cb(data);               
+         });
+      }
+    
+    };
+    return rs;
+
   }
 
 
@@ -800,32 +845,7 @@ var BrowserCouch = function(opts){
         
         
         remoteDatabase = function(url){   
-          var rs = {
-            url : url,
-            seq : 0,
-            
-            addLoad : function(cb){
-              loadFuncs.push(cb);
-            },
-            
-            getDoc : function(id, cb){
-              // If Same Domain:
-              $.getJSON(this.url + "/" + id, {}, cb || function(){}); 
-            },
-            
-            putDoc : function(doc, cb){
-              // If same Domain:
-              $.ajax({
-                url : this.url, 
-                data : JSON.stringify(doc),
-                type : 'PUT',
-                processData : false,
-                contentType : 'application/json',
-                complete: function(data){
-                  console.log(data);
-                  cb();
-                }
-              });
+          return bc.SameDomainDB(url);
             },
             
             // ==== Get Changes ====
@@ -927,5 +947,19 @@ var BrowserCouch = function(opts){
   bc.allDbs = function(){
     return []//TODO
   } 
-  return bc
+  
+  
+  // == Core Constructor ==
+  var cons = function(name, options){
+    bc.get(name, function(){
+      for (var cbi in this.loadcbs){
+          this.cbs[cbi]();
+        }
+      }, options.storage, options);
+  }
+  
+  for (var k in bc){
+    cons[k] = bc[k];
+  }
+  return cons
 }();  
