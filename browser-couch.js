@@ -583,13 +583,6 @@ var BrowserCouch = function(opts){
     if (options && options.sync){
       syncManager = BrowserCouch.SyncManager(name, self, options.sync);
     }
-    self.sync = function (dburls) {
-      if (!dburls) {
-        return syncManager.sync();
-      } else {
-        return BrowserCouch.SyncManager(name, self, {sync:{servers:dburls}});
-      }
-    }
     
     storage.get(metaName, function(meta){
       // Load meta-data before setting up database object
@@ -749,8 +742,8 @@ var BrowserCouch = function(opts){
           });
       };
       
-      self.getChanges = function(){
-        return self.chgs;
+      self.getChanges = function(cb){
+        cb(self.chgs);
       }
         
       storage.get(
@@ -797,16 +790,15 @@ var BrowserCouch = function(opts){
       // the TODO list.
       
       getChanges : function(cb){
-        //If same domain
         var url = this.url + "/_changes";
         $.getJSON(url, {since : rs.seq}, function(data){
-          console.log(data);
+          console.log("@", data);
           cb(data);               
          });
       }
     
     };
-    return rs;
+    cb(rs);
 
   }
 
@@ -852,7 +844,7 @@ var BrowserCouch = function(opts){
         databases = [], // Populate further down. 
 
         sync = function(){
-          bc.sync(db, databases, {});
+          bc.sync(db, databases, options);
           };      
       
   
@@ -861,30 +853,34 @@ var BrowserCouch = function(opts){
       // TODO - load the seq numbers for each db, and put the interval
       // into a callback.
     }
-    
-    interval = setInterval(sync, options.interval || 5000);
-   
+       
     return {}
   }
   
   bc.sync = function(source, target, options){
+    console.log("^", source, target);
     var _sync = function(){
       var databases = isArray(target) ? target : [target];   
       // ==== Get Changes ====
       //
       $.each(databases, function(){
-        console.log(this);
+        console.log("*", this);
         var rdb = this;
         rdb.getChanges(function(data){
+          console.log("REMOTE CHGS" , data);
           if (data && data.results){
             // ==== Merge new data back in ====
             // TODO, screw it, for now we'll assume the servers right.
             // - In future we need to store the conflicts in the doc
             for (var d in data.results){
+              console.log("!", d, data.results[d]);
               rdb.get(data.results[d].id, function(doc){
-                source.put(doc, function(){});
-              if (options.updateCallback)
-                options.updateCallback();
+                console.log("&", doc);
+                source.put(doc, function(){
+                  if (options.update){
+                    options.update();
+                  }
+                });  
               })
             }
           }
@@ -946,18 +942,20 @@ var BrowserCouch = function(opts){
       loadcbs : [],
       
       sync : function(target, syncOpts){
-        self.onload(function(db){
-          bc.get(target, function(rdb){
-              bc.sync(db, rdb, options);  
-            }, options.storage, options);
-        });
+        self.onload(function(){
+          console.log("Adding sync");
+            bc.SameDomainDB(target, function(rdb){
+              console.log("#", rdb);
+              bc.sync(self, rdb, syncOpts);  
+            }, options.storage, options)
+          });
       },
       
       onload : function(func){
         if (self.loaded){
-          func(self.db);
+          func(self);
         } else{
-          self.loadcbs.push(func)
+          self.loadcbs.push(func);
         }   
       }
       
@@ -967,11 +965,14 @@ var BrowserCouch = function(opts){
     console.log('!' +name);
     
     bc.get(name, function(db){
-      self.db = db;
+      for (var k in db){
+        self[k] = db[k];
+      }  
+    
       // onload callbacks
       self.loaded = true;
       for (var cbi in self.loadcbs){
-          self.loadcbs[cbi](db);
+          self.loadcbs[cbi](self);
         }
       }, options.storage, options);
     
