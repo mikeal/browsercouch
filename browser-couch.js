@@ -561,7 +561,7 @@ var BrowserCouch = function(opts){
   
   // === Local Storage Database ===
   // TODO, rename this
-  bc._DB = function(name, storage, cb, options) {
+  bc.BrowserDatabase = function(name, storage, cb, options) {
     var self = {},
         dbName = 'BrowserCouch_DB_' + name,
         metaName = 'BrowserCouch_Meta_' + name,
@@ -907,7 +907,7 @@ var BrowserCouch = function(opts){
     
     };
     
-    bc._DB(name, options.storage || new bc.LocalStorage(), function(db){
+    bc.BrowserDatabase(name, options.storage || new bc.LocalStorage(), function(db){
       for (var k in db){
         self[k] = db[k];
       }  
