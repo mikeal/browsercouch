@@ -16,12 +16,11 @@ $(function(){
 		var ress = res.toString().replace(" ", "");
 		tests[current_test][1].text(ress);
 		tests[current_test][1].parent().css('background-color', (ress === tests[current_test][0])?'#0f0':'#f00');
-		console.log(ress, tests[current_test][0]);
 		if (current_test >= tests.length-1){
 			return
 		}	
 		current_test ++;
-		tests[current_test][1].css('background-color', '#ff0');
+		tests[current_test][1].parent().css('background-color', '#ff0');
 		eval(tests[current_test][2]);
 	}
 	
@@ -45,19 +44,19 @@ $(function(){
 	<body>
 		<h2>Setup</h2>
 		<pre><code id = "setup">
-console.log("loading");		
 var test_data = [
 	{_id : "0", hello : 'world'},
 	{_id : "1", chunky : 'monkey'},
 	{_id : "2", foo : 'bar'},
 	{_id : "3", black : 'hat'},
-	{_id : "4", black : 'tea'}
+	{_id : "4", black : 'tea'},
+	{_id : "5", words : 'two foo three'},
+	{_id : "6", words: 'two'}
 	];		
 	
 var db = BrowserCouch('literateTests');
 
 db.onload(function(){
-	console.log("loaded");
 	db.put(test_data, function(){});	
 });
 
@@ -72,7 +71,6 @@ var db = BrowserCouch('literateTests')
 db.onload(function(){
 	db.get('3', 
 		function(x){
-			console.log(x);
 			result(x['black'])
 		}
 	);
@@ -80,6 +78,34 @@ db.onload(function(){
 				</code></pre></td>
 				<td class = 'result'></td>
 				<td class = 'expected'>hat</td>
+			</tr>
+			
+						<tr>
+				<td><pre><code>
+var db = BrowserCouch('literateTests');
+db.onload(function(){
+	db.view({
+		map : function(doc, emit){
+			if (doc.words){
+				var words = doc.words.split(" ");
+    			for (var i = 0; i < words.length; i++)
+      				emit(words[i], 1);
+      		}		
+		},
+		reduce : function(keys, values){
+			var sum = 0;
+    		for (var i = 0; i < values.length; i++)
+      			sum += values[i];
+    		return sum;
+    	},
+    	finished : function(view){
+    		result(view.findRow('two'));
+    	}	
+	});
+});	
+				</code></pre></td>
+				<td class = 'result'>2</td>
+				<td class = 'expected'>2</td>
 			</tr>
 		</table>		
 	
