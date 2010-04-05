@@ -473,10 +473,10 @@ var BrowserCouch = function(opts){
   
       
     this.get = function LS_get(name, cb) {
-      if (name in storage && storage[name].value)
+      if (name in storage && storage[name])//.value)
         bc.ModuleLoader.require('JSON',
           function() {
-            var obj = JSON.parse(storage[name].value);
+            var obj = JSON.parse(storage[name])//.value);
             cb(obj);
           });
       else
@@ -569,191 +569,184 @@ var BrowserCouch = function(opts){
   bc.BrowserDatabase = function(name, storage, cb, options) {
     var self = {},
         dbName = 'BrowserCouch_DB_' + name,
-        metaName = 'BrowserCouch_Meta_' + name,
         dict = new bc._Dictionary(),
         syncManager, 
         
         commitToStorage = function (cb) {
           storage.put(dbName, dict.pickle(), function(){
-            storage.put(metaName, {seq : self.seq}, cb || function(){})
+            cb || function(){}
           });
         };
     self.chgs = []; //TODO - this is until I get seq working.
    
+    self.wipe = function DB_wipe(cb) {
+      dict.clear();
+      commitToStorage(cb);
+    };
+
+    self.get = function DB_get(id, cb) {
+      if (dict.has(id))
+        cb(dict.get(id));
+      else
+        cb(null);
+    };
     
-    storage.get(metaName, function(meta){
-      // Load meta-data before setting up database object
-      
-      meta = meta || {};
-      self.seq = meta.seq || 0;
-      
-      self.wipe = function DB_wipe(cb) {
-        dict.clear();
-        commitToStorage(cb);
-      };
-  
-      self.get = function DB_get(id, cb) {
-        if (dict.has(id))
-          cb(dict.get(id));
-        else
-          cb(null);
-      };
-      
-      // === {{{PUT}}} ===
-      //
-      // This method is vaguely isomorphic to a 
-      // [[http://wiki.apache.org/couchdb/HTTP_Document_API#PUT|HTTP PUT]] to a 
-      // url with the specified {{{id}}}.
-      //
-      // It creates or updates a document
-      self.put = function DB_put(document, cb, options) {
-        options = options || {};
-        var putObj = function(obj){
-          if (!obj._rev){
-            obj._rev = "1-" + (Math.random()*Math.pow(10,20)); 
-              // We're using the naive random versioning, rather
-              // than the md5 deterministic hash.
-          }else{
-            var iter = parseInt(obj._rev.split("-")[0]);
-            obj._rev = "" + (iter+1) +  
-              obj._rev.slice(obj._rev.indexOf("-"));
-          }
-          if(options && (!options.noSync))
-            self.chgs.push(obj)
-          dict.set(obj._id, obj);
+    // === {{{PUT}}} ===
+    //
+    // This method is vaguely isomorphic to a 
+    // [[http://wiki.apache.org/couchdb/HTTP_Document_API#PUT|HTTP PUT]] to a 
+    // url with the specified {{{id}}}.
+    //
+    // It creates or updates a document
+    self.put = function DB_put(document, cb, options) {
+      options = options || {};
+      var putObj = function(obj){
+        if (!obj._rev){
+          obj._rev = "1-" + (Math.random()*Math.pow(10,20)); 
+            // We're using the naive random versioning, rather
+            // than the md5 deterministic hash.
+        }else{
+          var iter = parseInt(obj._rev.split("-")[0]);
+          obj._rev = "" + (iter+1) +  
+            obj._rev.slice(obj._rev.indexOf("-"));
+        }
+        if(options && (!options.noSync))
+          self.chgs.push(obj)
+        dict.set(obj._id, obj);
+        
+        //If new object 
+        self.seq +=1;
           
-          //If new object 
-          self.seq +=1;
-            
-        }
-      
-        if (isArray(document)) {
-          for (var i = 0; i < document.length; i++){
-            putObj(document[i]);
-          }
-        } else{
-          putObj(document);
-        }
-        
-        commitToStorage(cb);
-      };
-      
-  
-  
-      // === {{{POST}}} ===
-      // 
-      // Roughly isomorphic to the two POST options
-      // available in the REST interface. If an ID is present,
-      // then the functionality is the same as a PUT operation,
-      // however if there is no ID, then one will be created.
-      //
-      self.post =function(data, cb, options){
-        var _t = this
-        if (!data._id)
-          bc.ModuleLoader.require('UUID', function(){
-            data._id = new UUID().createUUID();
-            _t.put(data, function(){cb(data._id)}, options);
-          });
-        else{  
-          _t.put(data, function(){cb(data._id)}, options)
-        }
       }
-  
-      // === {{{DELETE}}} ===
-      //
-      // Delete the document. 
-      self.del = function(doc, cb){
-        this.put({_id : doc._id, _rev : doc._rev, _deleted : true}, cb);
+    
+      if (isArray(document)) {
+        for (var i = 0; i < document.length; i++){
+          putObj(document[i]);
+        }
+      } else{
+        putObj(document);
       }
-  
-      // 
-      self.getLength = function DB_getLength() {
-        return dict.getKeys().length;
-      };
-  
-      // === View ===
-      //
-      // Perform a query on the data. Queries are in the form of
-      // map-reduce functions.
-      //
-      // takes object of options:
-      //
-      // * {{{options.map}}} : The map function to be applied to each document
-      //                       (REQUIRED)
-      //
-      // * {{{options.finished}}} : A callback for the result.
-      //                           (REQUIRED)
-      //
-      // * {{{options.chunkSize}}}
-      // * {{{options.progress}}} : A callback to indicate progress of a query
-      // * {{{options.mapReducer}}} : A Map-Reduce engine, by default uses a 
-      //                              single thread
-      // * {{{options.reduce}}} : The reduce function 
       
-      self.view = function DB_view(options) {
-        if (!options.map)
-          throw new Error('map function not provided');
-        if (!options.finished)
-          throw new Error('finished callback not provided');
-  
-        // Maximum number of items to process before giving the UI a chance
-        // to breathe.
-        var DEFAULT_CHUNK_SIZE = 1000;
-  
-        // If no progress callback is given, we'll automatically give the
-        // UI a chance to breathe for this many milliseconds before continuing
-        // processing.
-        var DEFAULT_UI_BREATHE_TIME = 50;
-  
-        var chunkSize = options.chunkSize;
-        if (!chunkSize)
-          chunkSize = DEFAULT_CHUNK_SIZE;
-  
-        var progress = options.progress;
-        if (!progress)
-          progress = function defaultProgress(phase, percent, resume) {
-            window.setTimeout(resume, DEFAULT_UI_BREATHE_TIME);
-          };
-  
-        var mapReducer = options.mapReducer;
-        if (!mapReducer)
-          mapReducer = bc.SingleThreadedMapReducer;
-  
-        mapReducer.map(
-          options.map,
-          dict,
-          progress,
-          chunkSize,
-          function(mapResult) {
-            if (options.reduce)
-              mapReducer.reduce(
-                options.reduce,
-                mapResult,
-                progress,
-                chunkSize,
-                function(rows) {
-                  options.finished(new BrowserCouch._View(rows));
-                });
-            else
-              options.finished(new BrowserCouch._MapView(mapResult));
-          });
-      };
-      
-      self.getChanges = function(cb){
-        cb(dict.objects());
-      }
-        
-      storage.get(
-        dbName,
-        function(obj) {
-          if (obj)
-            dict.unpickle(obj);
-          cb(self);
+      commitToStorage(cb);
+    };
+    
+
+
+    // === {{{POST}}} ===
+    // 
+    // Roughly isomorphic to the two POST options
+    // available in the REST interface. If an ID is present,
+    // then the functionality is the same as a PUT operation,
+    // however if there is no ID, then one will be created.
+    //
+    self.post =function(data, cb, options){
+      var _t = this
+      if (!data._id)
+        bc.ModuleLoader.require('UUID', function(){
+          data._id = new UUID().createUUID();
+          _t.put(data, function(){cb(data._id)}, options);
         });
+      else{  
+        _t.put(data, function(){cb(data._id)}, options)
+      }
+    }
+
+    // === {{{DELETE}}} ===
+    //
+    // Delete the document. 
+    self.del = function(doc, cb){
+      this.put({_id : doc._id, _rev : doc._rev, _deleted : true}, cb);
+    }
+
+    // 
+    self.getLength = function DB_getLength() {
+      return dict.getKeys().length;
+    };
+
+    // === View ===
+    //
+    // Perform a query on the data. Queries are in the form of
+    // map-reduce functions.
+    //
+    // takes object of options:
+    //
+    // * {{{options.map}}} : The map function to be applied to each document
+    //                       (REQUIRED)
+    //
+    // * {{{options.finished}}} : A callback for the result.
+    //                           (REQUIRED)
+    //
+    // * {{{options.chunkSize}}}
+    // * {{{options.progress}}} : A callback to indicate progress of a query
+    // * {{{options.mapReducer}}} : A Map-Reduce engine, by default uses a 
+    //                              single thread
+    // * {{{options.reduce}}} : The reduce function 
+    
+    self.view = function DB_view(options) {
+      if (!options.map)
+        throw new Error('map function not provided');
+      if (!options.finished)
+        throw new Error('finished callback not provided');
+
+      // Maximum number of items to process before giving the UI a chance
+      // to breathe.
+      var DEFAULT_CHUNK_SIZE = 1000;
+
+      // If no progress callback is given, we'll automatically give the
+      // UI a chance to breathe for this many milliseconds before continuing
+      // processing.
+      var DEFAULT_UI_BREATHE_TIME = 50;
+
+      var chunkSize = options.chunkSize;
+      if (!chunkSize)
+        chunkSize = DEFAULT_CHUNK_SIZE;
+
+      var progress = options.progress;
+      if (!progress)
+        progress = function defaultProgress(phase, percent, resume) {
+          window.setTimeout(resume, DEFAULT_UI_BREATHE_TIME);
+        };
+
+      var mapReducer = options.mapReducer;
+      if (!mapReducer)
+        mapReducer = bc.SingleThreadedMapReducer;
+
+      mapReducer.map(
+        options.map,
+        dict,
+        progress,
+        chunkSize,
+        function(mapResult) {
+          if (options.reduce)
+            mapReducer.reduce(
+              options.reduce,
+              mapResult,
+              progress,
+              chunkSize,
+              function(rows) {
+                options.finished(new BrowserCouch._View(rows));
+              });
+          else
+            options.finished(new BrowserCouch._MapView(mapResult));
+        });
+    };
+    
+    self.getChanges = function(cb){
+      cb(dict.objects());
+    }
       
+    storage.get(
+      dbName,
+      function(obj) {
+        console.log(obj, dbName, storage);
+        if (obj)
+          dict.unpickle(obj);
+        cb(self);
+      });
+    
+    
       
-      
-    });
+  
   }
   // === Remote Database ===
   // A constructor for a database wrapper for the REST interface 
@@ -847,14 +840,28 @@ var BrowserCouch = function(opts){
 
   // === //List All Databases// ===
   //
-  // Similar to {{{/_all_dbs}}}
-  // TODO - as there is no way to see what keys are stored in localStorage,
-  //    we're going to have to store a metadata database
+  // Similar to {{{/_all_dbs}}} as there is no way to see what 
+  // keys are stored in localStorage, we have to store a metadata 
+  // database
   //
-  bc.allDbs = function(){
-    return []//TODO
+  bc.allDbs = function(cb){
+  	bc.ensureMeta(function(){
+       cb(bc._meta.get('databases'))
+    });
   } 
   
+  // === Load Metadata Database ===
+  // We store metadata, such as a list of databases etc,
+  // in a metadatabase. This will create a browsercouch
+  // wrapper for this database unless it's already loaded
+  bc.ensureMeta = function(cb, storage, options){
+  	if (bc._meta || options.meta){
+  		cb();
+  	}else{
+  		bc._meta = cons('_BrowserCouchMeta', {meta:true, storage:storage})
+  		bc._meta.onload(cb);
+    }
+  }
   
   // == {{{BrowserCouch}}} Core Constructor ==
   //
@@ -905,26 +912,27 @@ var BrowserCouch = function(opts){
     
     
     };
-    
-    // Create a database wrapper.
-    bc.BrowserDatabase(name,
-      options.storage || new bc.LocalStorage(),
-      function(db){
-        // == TODO ==
-        // We're copying the resultant methods back onto
-        // the self object. Could do this better.
-        for (var k in db){
-          self[k] = db[k];
-        }  
-        
-        // Fire the onload callbacks
-        self.loaded = true;
-        for (var cbi in self.loadcbs){
-            self.loadcbs[cbi](self);
-          }
-        },
-      options);
-    
+    bc.ensureMeta(function(){
+	    // Create a database wrapper.
+	    bc.BrowserDatabase(name,
+	      options.storage || new bc.LocalStorage(),
+	      function(db){
+	        // == TODO ==
+	        // We're copying the resultant methods back onto
+	        // the self object. Could do this better.
+	        for (var k in db){
+	          self[k] = db[k];
+	        }  
+	        
+	        // Fire the onload callbacks
+	        self.loaded = true;
+	        for (var cbi in self.loadcbs){
+	            self.loadcbs[cbi](self);
+	          }
+	        },
+	      options);
+	}, options.storage, options);
+		    
     return self;   
   }
   
