@@ -557,10 +557,11 @@ var BrowserCouch = function(opts){
   }
 
 
-  // == Database Wrapper Objects == 
+  // == Database Wrapper Interface == 
   //
   // A basic database interface. Implementing objects
-  // should support the basic REST commands that CouchDB uses
+  // should support methods that emulate the basic REST commands 
+  // that CouchDB uses. 
   // 
   
   // === Local Storage Database ===
@@ -754,7 +755,11 @@ var BrowserCouch = function(opts){
       
     });
   }
-
+  // === Remote Database ===
+  // A constructor for a database wrapper for the REST interface 
+  // for a remote CouchDB server. Mainly for use in the syncing.
+  // 
+  //
   bc.SameDomainDB = function (url, cb, options){
    var rs = {
       url : url,
@@ -863,9 +868,14 @@ var BrowserCouch = function(opts){
     var options = options || {};
     
     var self = {
+      // 'private' variables - perhaps we should move these into the closure
       loaded : false,
       loadcbs : [],
       
+      // ==== Sync the database ====
+      // Emulates the CouchDB replication functionality
+      // At the moment only couch's on the same domain
+      // will work beause of XSS restrictions.
       sync : function(target, syncOpts){
         self.onload(function(){
             bc.SameDomainDB(target, function(rdb){
@@ -874,6 +884,16 @@ var BrowserCouch = function(opts){
           });
       },
       
+      // ==== Add an onload function ====
+      // Seeing as we're completely callback driven, and you're
+      // frequently going to want to do a bunch of things once
+      // the database is loaded, being able to add an arbitrary
+      // number of onload functions is useful.
+      // 
+      // Onload functions are called with no arguments, but the 
+      // database object from the constructor is now ready. 
+      // (TODO - change this?)
+      //
       onload : function(func){
         if (self.loaded){
           func(self);
@@ -886,21 +906,31 @@ var BrowserCouch = function(opts){
     
     };
     
-    bc.BrowserDatabase(name, options.storage || new bc.LocalStorage(), function(db){
-      for (var k in db){
-        self[k] = db[k];
-      }  
-    
-      // onload callbacks
-      self.loaded = true;
-      for (var cbi in self.loadcbs){
-          self.loadcbs[cbi](self);
-        }
-      }, options);
+    // Create a database wrapper.
+    bc.BrowserDatabase(name,
+      options.storage || new bc.LocalStorage(),
+      function(db){
+        // == TODO ==
+        // We're copying the resultant methods back onto
+        // the self object. Could do this better.
+        for (var k in db){
+          self[k] = db[k];
+        }  
+        
+        // Fire the onload callbacks
+        self.loaded = true;
+        for (var cbi in self.loadcbs){
+            self.loadcbs[cbi](self);
+          }
+        },
+      options);
     
     return self;   
   }
   
+  // == TODO ==
+  // We're copying the bc methods onto the Database object. 
+  // Need to do this better, should research the jquery object.
   for (var k in bc){
     cons[k] = bc[k];
   }
