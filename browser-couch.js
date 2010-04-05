@@ -738,7 +738,6 @@ var BrowserCouch = function(opts){
     storage.get(
       dbName,
       function(obj) {
-        console.log(obj, dbName, storage);
         if (obj)
           dict.unpickle(obj);
         cb(self);
