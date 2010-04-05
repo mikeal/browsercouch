@@ -1,0 +1,88 @@
+<html>
+	<head>
+		<title>BrowserCouch Tests, literately</title>
+		<script src="js/ext/jquery.js"></script>
+		<script src="../browser-couch.js"></script>
+		<script type="text/javascript">
+$(function(){
+	eval($("#setup").text());
+	
+	
+	var tests = [], // expected, $elem, func
+		current_test = 0;
+	
+	
+	window.result = function(res){
+		var ress = res.toString().replace(" ", "");
+		tests[current_test][1].text(ress);
+		tests[current_test][1].parent().css('background-color', (ress === tests[current_test][0])?'#0f0':'#f00');
+		console.log(ress, tests[current_test][0]);
+		if (current_test >= tests.length-1){
+			return
+		}	
+		current_test ++;
+		tests[current_test][1].css('background-color', '#ff0');
+		eval(tests[current_test][2]);
+	}
+	
+	$('#tests tr').each(function(x){
+		if($(this).children('th').length > 0){
+			return;
+		}
+		var t = [
+			$(this).children('td.expected').text(),
+			$(this).children('td.result'),
+			$(this).children('td').find('code').text()
+		];
+		tests.push(t);
+	});	
+	eval(tests[0][2]);
+	
+});		
+		</script>
+		
+	</head>
+	<body>
+		<h2>Setup</h2>
+		<pre><code id = "setup">
+console.log("loading");		
+var test_data = [
+	{_id : "0", hello : 'world'},
+	{_id : "1", chunky : 'monkey'},
+	{_id : "2", foo : 'bar'},
+	{_id : "3", black : 'hat'},
+	{_id : "4", black : 'tea'}
+	];		
+	
+var db = BrowserCouch('literateTests');
+
+db.onload(function(){
+	console.log("loaded");
+	db.put(test_data, function(){});	
+});
+
+		</code></pre>
+		
+		<table id = "tests">
+			<tr><th>Code</th><th>Result</th><th>Expected</th></tr>
+			
+			<tr>
+				<td><pre><code>
+var db = BrowserCouch('literateTests')
+db.onload(function(){
+	db.get('3', 
+		function(x){
+			console.log(x);
+			result(x['black'])
+		}
+	);
+});	
+				</code></pre></td>
+				<td class = 'result'></td>
+				<td class = 'expected'>hat</td>
+			</tr>
+		</table>		
+	
+	</body>
+</html>
+		
