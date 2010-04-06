@@ -229,7 +229,7 @@ var Tests = {
       });
   },
   testViewMapReduceWebWorker_async: function(self) {
-    if (window.Worker) {
+    if (window.Worker && false) {
       var map = this._mapWordFrequencies;
       var reduce = this._reduceWordFrequencies;
       this._setupTestDb(
@@ -301,5 +301,23 @@ var Tests = {
         });
     } else
       self.skip();
+  },
+
+  testLocalSync : function(self){
+  	var db1 = BrowserCouch('browserSyncTest');
+  	var db2 = BrowserCouch('browserSyncTest2');
+  	db1.put([{_id:'0', foo:'bar'}], 
+  	  function(){	  	
+    		db2.sync('BrowserCouch:browserSyncTest', {
+    			update : function(){
+    				db2.get('0', 
+    					function(x){
+    						self.assertEqual(x['foo'], 'bar');
+    					}
+    				);	
+    			}
+      }); 
+	   });
   }
+  
 };

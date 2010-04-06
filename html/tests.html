@@ -13,22 +13,23 @@
 <h1>Browser Couch Tests</h1>
 <p>You can read the source code documentation for these tests <a
 href="index.html#js/tests.js">here</a>.</p>
-<div id="status">
-</div>
+<ul id="status" ></ul>
 </body>
 <script src="../browser-couch.js"></script>
 <script src="js/tests.js"></script>
-<script>
+<script src="js/ext/jquery.js"></script>
+
+<script type="text/javascript">
 var listener = {
   onReady: function(tests) {
-    var status = document.getElementById("status");
+    var status = $("#status");
     for (var i = 0; i < tests.length; i++) {
       var test = tests[i];
-      var div = document.createElement("div");
-      div.className = "test pending";
-      div.id = "test_" + test.id;
-      div.textContent = test.name + " pending";
-      status.appendChild(div);
+      var div = $("<li />")
+      	.addClass('test pending')
+      	.attr('id', "test_" + test.id)
+		.text(test.name + " pending");
+      status.append(div);
     }
   },
   onRun: function(test) {
