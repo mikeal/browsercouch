@@ -5,14 +5,16 @@
 		<script src="../browser-couch.js"></script>
 		<script type="text/javascript">
 $(function(){
-	eval($("#setup").text());
-	
-	
+		
 	var tests = [], // expected, $elem, func
 		current_test = 0;
 	
 	
 	window.result = function(res){
+		eval($("#teardown").text());
+		eval($("#setup").text());
+		
+		
 		var ress = res.toString().replace(" ", "");
 		tests[current_test][1].text(ress);
 		tests[current_test][1].parent().css('background-color', (ress === tests[current_test][0])?'#0f0':'#f00');
@@ -24,7 +26,7 @@ $(function(){
 		eval(tests[current_test][2]);
 	}
 	
-	$('#tests tr').each(function(x){
+	$('.tests tr').each(function(x){
 		if($(this).children('th').length > 0){
 			return;
 		}
@@ -39,21 +41,23 @@ $(function(){
 			.append($("<p>...</p>").click(function(){
 				$(this).hide();
 				d.show();
-			}))
+			})) 
 	});	
 	eval(tests[0][2]);
 	
 });		
 		</script>
 		<style type = 'text/css'>
-#tests{font-size:50%;}
-#tests code{font-size:30%;}
+
+.tests{float:left; margin:10px; border:1px solid #000;}		
+.tests code{font-size:40%;}
 #setup{display:none;}		
 		</style>
 		
 	</head>
 	<body>
-		<pre><code id = "setup">
+
+<pre><code id = "setup">
 var test_data = [
 	{_id : "0", hello : 'world'},
 	{_id : "1", chunky : 'monkey'},
@@ -70,14 +74,20 @@ db.onload(function(){
 	db.put(test_data, function(){});	
 });
 
-		</code></pre>
-		
-		<table id = "tests">
-			<tr><th>Name</th><th>Code</th><th>Result</th><th>Expected</th></tr>
+</code></pre>
+
+
+
+
+
+
 			
-			<tr>
-				<td>GET</td>
-				<td><pre><code>
+<table class = "tests">
+<tr ><th colspan ='3'>Basic Database Methods</th></tr>	
+<tr><th>Name</th><th>Code</th><th>Result</th><th>Expected</th></tr>
+			
+<tr><td>GET</td>
+<td><pre><code>
 var db = BrowserCouch('literateTests')
 db.onload(function(){
 	db.get('3', 
@@ -86,14 +96,62 @@ db.onload(function(){
 		}
 	);
 });	
-				</code></pre></td>
-				<td class = 'result'></td>
-				<td class = 'expected'>hat</td>
-			</tr>
+</code></pre></td>
+<td class = 'result'></td>
+<td class = 'expected'>hat</td>
+</tr>
+
+<tr><td>PUT</td>
+<td><pre><code>
+var db = BrowserCouch('literateTests')
+db.onload(function(){
+	db.put({_id:'7', worked: "YES"}, 
+		function(){
+			db.get('7', function(x){
+				result(x['worked'])
+		});
 			
-						<tr>
-				<td>Map Reduce</td>		
-				<td><pre><code>
+		}	
+	);
+});	
+</code></pre></td>
+<td class = 'result'></td>
+<td class = 'expected'>YES</td>
+</tr>
+
+
+<tr><td>POST</td>
+<td><pre><code>
+var db = BrowserCouch('literateTests')
+db.onload(function(){
+	db.post({worked: "YES"}, 
+		function(x){
+			db.get(x, function(x){
+				result(x['worked'])
+		});
+			
+		}	
+	);
+});	
+</code></pre></td>
+<td class = 'result'></td>
+<td class = 'expected'>YES</td>
+</tr>
+</table>
+
+
+
+
+
+
+
+
+
+<table class ='tests'>	
+<tr><th colspan ='3'>Database Queries</th></tr>		
+<tr>
+<td>Map Reduce</td>		
+<td><pre><code>
 var db = BrowserCouch('literateTests');
 db.onload(function(){
 	db.view({
@@ -115,14 +173,27 @@ db.onload(function(){
     	}	
 	});
 });	
-				</code></pre></td>
-				<td class = 'result'>2</td>
-				<td class = 'expected'>2</td>
-			</tr>
+</code></pre></td>
+<td class = 'result'>2</td>
+<td class = 'expected'>2</td>
+</tr>
+</table>
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 			
-			<tr>
-				<td>Local Sync</td>
-				<td><pre><code>
+<table class = 'tests'>
+<tr><th colspan ='3'>Sync</th></tr>					
+<tr>
+<td>Local Sync</td>
+<td><pre><code>
 var db1 = BrowserCouch('literateTests');
 var db2 = BrowserCouch('literateTests2');
 
@@ -135,14 +206,10 @@ db2.sync('BrowserCouch:literateTests', {
 		);	
 	}
 });
-
-
-
-
-				</code></pre></td>
-				<td class = 'result'></td>
-				<td class = 'expected'>hat</td>
-			</tr>			
+</code></pre></td>
+<td class = 'result'></td>
+<td class = 'expected'>hat</td>
+</tr>			
 			
 			
 		</table>		

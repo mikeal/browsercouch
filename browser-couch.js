@@ -52,7 +52,7 @@ var BrowserCouch = function(opts){
   // A helper function to determine whether an object is an Array or
   // not. Taken from jQuery
   
-  function isArray(value) {
+  var isArray = function(value) {
     return Object.prototype.toString.call(value) === "[object Array]";
   }
  
