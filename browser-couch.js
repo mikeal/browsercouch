@@ -523,8 +523,12 @@ var BrowserCouch = function(opts){
       return dict[key];
     };
 
-    this.objects = function(){
-      return dict;
+    this.values = function(){
+      var res = [];
+      for (var d in dict){
+        res.push(dict[d]);
+      }
+      return res;
     }
     
     this.set = function Dictionary_set(key, value) {
@@ -583,6 +587,7 @@ var BrowserCouch = function(opts){
     };
 
     self.get = function DB_get(id, cb) {
+      cb = cb || function(){}
       if (dict.has(id))
         cb(dict.get(id));
       else
@@ -730,7 +735,7 @@ var BrowserCouch = function(opts){
     };
     
     self.getChanges = function(cb){
-      cb(dict.objects());
+      cb({results: dict.values()});
     }
       
     storage.get(
@@ -803,13 +808,19 @@ var BrowserCouch = function(opts){
           // ==== Merge new data back in ====
           // TODO, screw it, for now we'll assume the servers right.
           // - In future we need to store the conflicts in the doc
+          var i = 0;
           for (var d in data.results){
-            target.get(data.results[d].id, function(doc){
-              source.put(doc, function(){
-                if (options.update){
-                  options.update();
-                }
-              });  
+            target.get(data.results[d]._id, function(doc){
+              if (doc){
+                source.put(doc, function(){
+                  i ++;
+                  if (i >= data.results.length){
+                    if (options.update){
+                      options.update();
+                    }
+                  }
+                });
+              }  
             })
           }
         }
@@ -882,9 +893,17 @@ var BrowserCouch = function(opts){
       // will work beause of XSS restrictions.
       sync : function(target, syncOpts){
         self.onload(function(){
-            bc.SameDomainDB(target, function(rdb){
+            var cb = function(rdb){
               bc.sync(self, rdb, syncOpts);  
-            }, options.storage, options)
+            };
+                
+            if (target.indexOf(":")>-1 && target.split(":")[0] === "BrowserCouch"){
+              bc.BrowserDatabase(target.split(":")[1],
+                options.storage || new bc.LocalStorage(), cb, options);
+            }else{
+              bc.SameDomainDB(target, cb, options.storage, options)
+            }
+            
           });
       },
       

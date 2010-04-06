@@ -34,15 +34,25 @@ $(function(){
 			$(this).children('td').find('code').text()
 		];
 		tests.push(t);
+		var d = $(this).children('td').find('code');
+		d.hide().parent()
+			.append($("<p>...</p>").click(function(){
+				$(this).hide();
+				d.show();
+			}))
 	});	
 	eval(tests[0][2]);
 	
 });		
 		</script>
+		<style type = 'text/css'>
+#tests{font-size:50%;}
+#tests code{font-size:30%;}
+#setup{display:none;}		
+		</style>
 		
 	</head>
 	<body>
-		<h2>Setup</h2>
 		<pre><code id = "setup">
 var test_data = [
 	{_id : "0", hello : 'world'},
@@ -63,9 +73,10 @@ db.onload(function(){
 		</code></pre>
 		
 		<table id = "tests">
-			<tr><th>Code</th><th>Result</th><th>Expected</th></tr>
+			<tr><th>Name</th><th>Code</th><th>Result</th><th>Expected</th></tr>
 			
 			<tr>
+				<td>GET</td>
 				<td><pre><code>
 var db = BrowserCouch('literateTests')
 db.onload(function(){
@@ -81,6 +92,7 @@ db.onload(function(){
 			</tr>
 			
 						<tr>
+				<td>Map Reduce</td>		
 				<td><pre><code>
 var db = BrowserCouch('literateTests');
 db.onload(function(){
@@ -107,6 +119,32 @@ db.onload(function(){
 				<td class = 'result'>2</td>
 				<td class = 'expected'>2</td>
 			</tr>
+			
+			<tr>
+				<td>Local Sync</td>
+				<td><pre><code>
+var db1 = BrowserCouch('literateTests');
+var db2 = BrowserCouch('literateTests2');
+
+db2.sync('BrowserCouch:literateTests', {
+	update : function(){
+		db2.get('3', 
+			function(x){
+				result(x['black']);
+			}
+		);	
+	}
+});
+
+
+
+
+				</code></pre></td>
+				<td class = 'result'></td>
+				<td class = 'expected'>hat</td>
+			</tr>			
+			
+			
 		</table>		
 	
 	</body>
