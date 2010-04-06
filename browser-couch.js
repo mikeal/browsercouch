@@ -573,9 +573,7 @@ var BrowserCouch = function(opts){
         syncManager, 
         
         commitToStorage = function (cb) {
-          storage.put(dbName, dict.pickle(), function(){
-            cb || function(){}
-          });
+          storage.put(dbName, dict.pickle(), cb || function(){});  
         };
     self.chgs = []; //TODO - this is until I get seq working.
    
@@ -845,7 +843,7 @@ var BrowserCouch = function(opts){
   //
   bc.allDbs = function(cb){
   	bc.ensureMeta(function(){
-       cb(bc._meta.get('databases'))
+       bc._meta.get('databases', cb);
     });
   } 
   
