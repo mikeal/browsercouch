@@ -3,6 +3,16 @@ BrowserCouch
 
 CouchDB in the browser - persistant, syncing client side storage.
  
+ 
+ 
+Status
+------
+
+I'm a few weeks away from what I'd call a 'stable' release. Please feel 
+free to fork or suggest improvements, but I'd hold off on using this 
+in a live setting until I can get some issues ironed out.
+
+Thanks,
 
 
 Example
