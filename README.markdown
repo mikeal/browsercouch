@@ -1,0 +1,21 @@
+BrowserCouch
+============
+
+CouchDB in the browser - persistant, syncing client side storage.
+ 
+
+
+Example
+-------
+ 
+GET:
+
+    var database = BrowserCouch('foo');
+    database.onload(function(){
+        database.get('bar', function(d){console.log(d)});
+    });
+ 
+ 
+ SYNC
+
+    database.sync('http://localhost:5984/foo', {continuous:true});
