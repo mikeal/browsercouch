@@ -8,7 +8,7 @@ CouchDB in the browser - persistant, syncing client side storage.
 Example
 -------
  
-GET:
+###GET:
 
     var database = BrowserCouch('foo');
     database.onload(function(){
@@ -16,11 +16,11 @@ GET:
     });
  
  
-SYNC
+###SYNC
 
     database.sync('http://localhost:5984/foo', {continuous:true});
     
-MAP REDUCE
+###MAP REDUCE
 
 	var test_data = [
 		{_id : "0", hello : 'world'},
