@@ -42,9 +42,6 @@ Some time later ...
     
 	var db = BrowserCouch('bar');
 	db.onload(function(){
-		
-	
-	
 		db.view({
 			map : function(doc, emit){
 				if (doc.words){
