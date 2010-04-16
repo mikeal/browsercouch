@@ -931,7 +931,7 @@ var BrowserCouch = function(opts){
     bc.ensureMeta(function(){
 	    // Create a database wrapper.
 	    bc.BrowserDatabase(name,
-	      options.storage || new bc.LocalStorage(),
+	      options.storage || new bc.LocalStorage(), // TODO - check local storage is available
 	      function(db){
 	        // == TODO ==
 	        // We're copying the resultant methods back onto

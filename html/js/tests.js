@@ -318,6 +318,11 @@ var Tests = {
     			}
       }); 
 	   });
+  },
+  testAllDbs : function(self){
+ 	BrowserCouch.allDbs(function(dbs){
+  		self.assertTrue(dbs.indexOf('BrowserCouch_test_DB')>=0);
+  	});	
   }
   
 };
